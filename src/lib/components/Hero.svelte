@@ -46,7 +46,7 @@
 				could unfold.
 			</p>
 			<div class="cta">
-				<a class="btn btn-primary" href="/#start">Start modelling</a>
+				<a class="btn btn-primary" href="/app">Start modelling</a>
 				<a class="btn btn-outline" href="/#how">See how it works</a>
 			</div>
 			<ul class="trust">

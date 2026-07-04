@@ -528,6 +528,88 @@ h2 {
 	text-decoration: underline;
 }
 
+/* Auth (sign in) */
+.auth {
+	min-height: calc(100vh - 220px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px 24px;
+}
+.auth-card {
+	width: 100%;
+	max-width: 380px;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	padding: 30px;
+	box-shadow: 0 10px 40px rgba(15, 37, 64, 0.06);
+}
+.auth-card h1 {
+	font-size: 24px;
+	color: var(--navy);
+	margin: 0 0 4px;
+}
+.auth-card .sub {
+	color: var(--muted);
+	font-size: 14px;
+	margin: 0 0 22px;
+}
+.field {
+	margin-bottom: 14px;
+}
+.field label {
+	display: block;
+	font-size: 13px;
+	color: #475569;
+	margin-bottom: 6px;
+}
+.field input {
+	width: 100%;
+	padding: 11px 12px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	font-size: 15px;
+	font-family: inherit;
+}
+.field input:focus {
+	outline: none;
+	border-color: var(--navy);
+}
+.auth-card .btn {
+	width: 100%;
+	text-align: center;
+	margin-top: 6px;
+}
+.auth-error {
+	background: #fdecea;
+	color: #b42318;
+	font-size: 13px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	margin-bottom: 16px;
+}
+.auth-note {
+	margin: 16px 0 0;
+	font-size: 12px;
+	color: #93a0b0;
+	text-align: center;
+}
+
+/* Signed-in stub */
+.app-stub {
+	padding: 90px 0;
+	text-align: center;
+}
+.app-stub h1 {
+	color: var(--navy);
+	margin: 0 0 10px;
+}
+.app-stub p {
+	color: var(--muted);
+	margin: 0 0 24px;
+}
+
 @media (max-width: 860px) {
 	.hero-grid {
 		grid-template-columns: 1fr;

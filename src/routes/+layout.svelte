@@ -15,7 +15,7 @@
 	<div class="links">
 		<a href="/#why">Why</a>
 		<a href="/#how">How it works</a>
-		<a class="btn btn-outline" href="/#start">Sign in</a>
+		<a class="btn btn-outline" href="/signin">Sign in</a>
 	</div>
 </nav>
 
