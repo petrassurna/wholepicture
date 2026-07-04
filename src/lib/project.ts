@@ -21,6 +21,8 @@ export interface Projection {
 	runsOutAge: number | null;
 }
 
+
+
 export function project(input: ProjectInput, scenario: 'average' | 'bad'): Projection {
 	const { startAge, endAge, balance, spend, growth, downturn, recoveryYears } = input;
 
