@@ -19,6 +19,7 @@
 			information to keep the service running.
 		</p>
 
+		
 		<H2 text="2. How we use it" />
 		<p>
 			We use your figures only to produce your projections and to operate and improve Whole Picture.
