@@ -66,7 +66,7 @@
 				downturn at the wrong time could unfold.
 			</p>
 			<div class="cta">
-				<a class="btn btn-primary" href="/app">Start modelling</a>
+				<a class="btn btn-primary" href="/#try">Start modelling</a>
 				<a class="btn btn-outline" href="/#how">See how it works</a>
 			</div>
 			<ul class="trust">
@@ -76,7 +76,7 @@
 			</ul>
 		</div>
 
-		<div class="hero-visual">
+		<div class="hero-visual" id="try">
 			<div class="chart-card">
 				<div class="ct">
 					<h4>{compact(balance)} super to age {endAge}</h4>
