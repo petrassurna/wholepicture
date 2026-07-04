@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { project } from '$lib/project';
+	import { project, type Projection } from '$lib/project';
 	import H1 from './H1.svelte';
 
 	const startAge = 60;
@@ -9,7 +9,7 @@
 	const downturn = 0.3; // bad case: one-off 30% crash in year 1...
 	const recoveryYears = 5; // ...that climbs back to its pre-crash level over 5 years
 
-	let spend = $state(40000);
+	let spend = $state(50000);
 
 	const params = $derived({ startAge, endAge, balance, spend, growth, downturn, recoveryYears });
 	const avg = $derived(project(params, 'average'));
@@ -23,17 +23,27 @@
 	const x = (age: number) => 44 + ((age - startAge) / (endAge - startAge)) * 340;
 	const y = (b: number) => 188 - (b / yMax) * 148;
 
+	// Draw the line only until the money is depleted — end it on the baseline
+	// rather than dragging a flat zero-tail (and a floating dot) across the chart.
+	const drawn = (p: Projection) => {
+		const i = p.points.findIndex((pt) => pt.balance <= 0);
+		return i === -1 ? p.points : p.points.slice(0, i + 1);
+	};
+	const avgDrawn = $derived(drawn(avg));
+	const badDrawn = $derived(drawn(bad));
+
 	const avgPts = $derived(
-		avg.points.map((p) => `${x(p.age).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ')
+		avgDrawn.map((p) => `${x(p.age).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ')
 	);
 	const badPts = $derived(
-		bad.points.map((p) => `${x(p.age).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ')
+		badDrawn.map((p) => `${x(p.age).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ')
 	);
 
 	const avgOut = $derived(avg.runsOutAge);
 	const badOut = $derived(bad.runsOutAge);
-	const avgMarkerX = $derived(avgOut ? x(avgOut) : null);
-	const badMarkerX = $derived(badOut ? x(badOut) : null);
+	// Dot sits where the line actually meets the baseline (only if it runs out).
+	const avgEnd = $derived(avgOut ? avgDrawn[avgDrawn.length - 1] : null);
+	const badEnd = $derived(badOut ? badDrawn[badDrawn.length - 1] : null);
 
 	const label = (out: number | null) =>
 		out ? `projected to run out ~${out}` : `projected to last past ${endAge} ✓`;
@@ -108,31 +118,11 @@
 						/>
 					</g>
 
-					{#if avgMarkerX !== null}
-						<line
-							x1={avgMarkerX}
-							y1="188"
-							x2={avgMarkerX}
-							y2="150"
-							stroke="#0f2540"
-							stroke-width="1"
-							stroke-dasharray="3 3"
-							opacity="0.35"
-						/>
-						<circle cx={avgMarkerX} cy="187" r="3.2" fill="#0f2540" />
+					{#if avgEnd}
+						<circle cx={x(avgEnd.age)} cy={y(avgEnd.balance)} r="3.4" fill="#0f2540" />
 					{/if}
-					{#if badMarkerX !== null}
-						<line
-							x1={badMarkerX}
-							y1="188"
-							x2={badMarkerX}
-							y2="150"
-							stroke="#d9534f"
-							stroke-width="1"
-							stroke-dasharray="3 3"
-							opacity="0.5"
-						/>
-						<circle cx={badMarkerX} cy="187" r="3.2" fill="#d9534f" />
+					{#if badEnd}
+						<circle cx={x(badEnd.age)} cy={y(badEnd.balance)} r="3.4" fill="#d9534f" />
 					{/if}
 
 					<g font-size="11" fill="#93a0b0" text-anchor="middle">
