@@ -7,7 +7,9 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Whole Picture — model it before you live it</title>
+	<meta property="og:site_name" content="Whole Picture" />
+	<meta property="og:type" content="website" />
+	<meta name="twitter:card" content="summary" />
 </svelte:head>
 
 <nav class="nav">
@@ -27,9 +29,11 @@
 		<a href="/privacy">Privacy Policy</a>
 	</div>
 	<p>
-		<strong>Whole Picture is a modelling and projection tool for your own information.</strong>
-		It is not financial advice, does not recommend any product or tell you what to do, and is not a
-		substitute for a licensed financial adviser.
+		Whole Picture is an educational modelling and projection tool for general information only. It
+		does not provide financial advice, recommendations or personal financial product advice.
+		Projections are based on the assumptions and information you enter and do not predict future
+		investment returns or outcomes. Consider obtaining advice from a licensed financial adviser
+		before making financial decisions.
 	</p>
 	<p class="copyright">© 2025 Whole Picture</p>
 </footer>

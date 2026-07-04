@@ -14,7 +14,7 @@
 			/>
 			<Step
 				n={2}
-				title="See various scenarios"
+				title="Explore different scenarios"
 				text="From an average case to a bad-timing downturn — year by year, side by side."
 			/>
 			<Step

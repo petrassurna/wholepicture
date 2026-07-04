@@ -203,10 +203,16 @@ a {
 	height: auto;
 	display: block;
 }
-.chart-card .slider {
+.chart-card .sliders {
 	margin-top: 4px;
 	padding-top: 14px;
 	border-top: 1px solid var(--line);
+}
+.chart-card .slider {
+	margin-bottom: 13px;
+}
+.chart-card .slider:last-child {
+	margin-bottom: 0;
 }
 .chart-card .slider-top {
 	display: flex;
@@ -247,6 +253,13 @@ a {
 	font-size: 11px;
 	color: #93a0b0;
 	margin: 12px 0 0;
+}
+.chart-card .chart-note {
+	text-align: center;
+	font-size: 11px;
+	color: #93a0b0;
+	line-height: 1.45;
+	margin: 7px 0 0;
 }
 
 /* Trust strip */

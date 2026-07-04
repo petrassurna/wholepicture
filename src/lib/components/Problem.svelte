@@ -67,8 +67,10 @@
 			</ProblemCard>
 		</div>
 		<p class="resolve">
-			Whole Picture isn't a cheaper adviser — it's a modelling tool. <strong
-				>You enter the figures. It shows you a projection. You draw your own conclusions.</strong
+			Whole Picture is not a financial adviser or financial planning service. It is a modelling tool.
+			<strong
+				>You enter the assumptions. It calculates projected outcomes. You decide what they mean for
+				your circumstances.</strong
 			>
 		</p>
 	</div>

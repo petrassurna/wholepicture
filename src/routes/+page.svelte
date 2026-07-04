@@ -4,6 +4,19 @@
 	import HowItWorks from '$lib/components/HowItWorks.svelte';
 </script>
 
+<svelte:head>
+	<title>How Long Will Your Super Last? | Whole Picture</title>
+	<meta
+		name="description"
+		content="Model how long your super could last in retirement. A free Australian projection tool — enter your own numbers and explore different scenarios. Not financial advice."
+	/>
+	<meta property="og:title" content="How Long Will Your Super Last? | Whole Picture" />
+	<meta
+		property="og:description"
+		content="A free Australian projection tool — model how long your super could last in retirement and explore different scenarios. Not financial advice."
+	/>
+</svelte:head>
+
 <Hero />
 <Problem />
 <HowItWorks />
