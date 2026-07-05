@@ -1,8 +1,14 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { plan } from '$lib/state/plan.svelte';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
+
+	// Restore saved values after hydration, then auto-save on every change.
+	onMount(() => plan.load());
+	$effect(() => plan.save());
 </script>
 
 <svelte:head>
@@ -17,7 +23,7 @@
 	<div class="links">
 		<a href="/#why">Why</a>
 		<a href="/#how">How it works</a>
-		<a class="btn btn-outline" href="/#try">Try it</a>
+		<a class="btn btn-outline" href="/model">Try it</a>
 	</div>
 </nav>
 

@@ -176,7 +176,7 @@ a {
 .chart-card .ct {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
+	align-items: center;
 	margin-bottom: 8px;
 }
 .chart-card h4 {
@@ -184,6 +184,31 @@ a {
 	color: var(--navy);
 	font-size: 14px;
 }
+.chart-card .toggle {
+	display: inline-flex;
+	background: #eef1f4;
+	border-radius: 999px;
+	padding: 2px;
+	gap: 2px;
+}
+.chart-card .toggle button {
+	width: auto;
+	margin: 0;
+	border: 0;
+	background: transparent;
+	color: #6b7688;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 4px 11px;
+	border-radius: 999px;
+	cursor: pointer;
+}
+.chart-card .toggle button.active {
+	background: #fff;
+	color: var(--navy);
+	box-shadow: 0 1px 3px rgba(15, 37, 64, 0.12);
+}
+
 .chart-card .legend {
 	display: flex;
 	gap: 14px;
@@ -621,6 +646,224 @@ h2 {
 .app-stub p {
 	color: var(--muted);
 	margin: 0 0 24px;
+}
+
+/* Interior model screen */
+.model {
+	padding: 26px 0 56px;
+}
+.model-head {
+	margin-bottom: 18px;
+}
+.model-head h1 {
+	color: var(--navy);
+	font-size: 30px;
+	margin: 0 0 6px;
+	letter-spacing: -0.4px;
+}
+.model-head p {
+	color: var(--muted);
+	margin: 0;
+	font-size: 16px;
+}
+.model-grid {
+	display: grid;
+	grid-template-columns: 1.1fr 0.9fr;
+	gap: 40px;
+	align-items: start;
+}
+.model-chart {
+	position: sticky;
+	top: 80px;
+}
+.model-chart .chart-card {
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	padding: 18px 20px 14px;
+	box-shadow: 0 10px 40px rgba(15, 37, 64, 0.06);
+}
+/* Accordion input sections (scale to any number of categories) */
+.acc {
+	padding: 0; /* override the global section { padding: 56px 0 } */
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	margin-bottom: 8px;
+	/* no overflow:hidden — it would clip the help tooltips */
+}
+.acc-head {
+	width: 100%;
+	margin: 0;
+	border: 0;
+	border-radius: 11px 11px 0 0;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 11px 14px;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--navy);
+	cursor: pointer;
+}
+/* closed section: the header is the whole box, so round all corners */
+.acc:not(:has(.acc-body)) .acc-head {
+	border-radius: 11px;
+}
+.acc-head:hover {
+	background: var(--soft);
+}
+.acc-chev {
+	color: var(--muted);
+	font-size: 18px;
+	transition: transform 0.15s ease;
+}
+.acc-chev.open {
+	transform: rotate(90deg);
+}
+.acc-body {
+	padding: 14px;
+	display: grid;
+	gap: 14px;
+	border-top: 1px solid var(--line);
+}
+.field-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 6px;
+}
+.field-head label {
+	margin: 0;
+}
+
+/* Help tooltip */
+.help {
+	position: relative;
+	display: inline-flex;
+}
+.help-badge {
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	background: #c3ccd6;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: help;
+	user-select: none;
+}
+.help-badge:hover {
+	background: var(--navy);
+}
+.help-tip {
+	position: absolute;
+	bottom: 135%;
+	right: -6px;
+	left: auto;
+	transform: none;
+	width: 230px;
+	max-width: calc(100vw - 40px);
+	background: var(--navy);
+	color: #eaf0f7;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.45;
+	padding: 9px 11px;
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(15, 37, 64, 0.25);
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+	z-index: 20;
+	pointer-events: none;
+}
+.help:hover .help-tip,
+.help:focus-within .help-tip {
+	visibility: visible;
+	opacity: 1;
+}
+.model .field {
+	margin-bottom: 0;
+}
+.field-note {
+	font-size: 12px;
+	color: var(--muted);
+	margin: 4px 0 0;
+}
+
+/* Bank accounts */
+.bank-acct {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 12px;
+	background: var(--soft);
+}
+.bank-acct-top {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+.bank-name {
+	flex: 1;
+	min-width: 0;
+	padding: 9px 11px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	font-size: 14px;
+	font-family: inherit;
+}
+.bank-name:focus {
+	outline: none;
+	border-color: var(--navy);
+}
+.bank-remove {
+	width: 36px;
+	margin: 0;
+	border: 1px solid var(--line);
+	background: #fff;
+	border-radius: 8px;
+	color: var(--muted);
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+}
+.bank-remove:hover {
+	color: #b42318;
+	border-color: #f0c4bd;
+}
+.bank-fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+.add-btn {
+	width: 100%;
+	margin: 0;
+	border: 1px dashed #c3ccd6;
+	background: #fff;
+	border-radius: 8px;
+	padding: 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--navy);
+	cursor: pointer;
+}
+.add-btn:hover {
+	background: var(--soft);
+	border-color: var(--navy);
+}
+@media (max-width: 800px) {
+	.model-grid {
+		grid-template-columns: 1fr;
+	}
+	.model-chart {
+		position: static;
+	}
 }
 
 @media (max-width: 860px) {
