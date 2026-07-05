@@ -841,6 +841,10 @@ h2 {
 	grid-template-columns: 1fr 1fr;
 	gap: 12px;
 }
+.income-body {
+	display: grid;
+	gap: 12px;
+}
 .add-btn {
 	width: 100%;
 	margin: 0;
