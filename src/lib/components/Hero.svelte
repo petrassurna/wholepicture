@@ -2,7 +2,7 @@
 	import { project, type Projection } from '$lib/project';
 	import H1 from './H1.svelte';
 
-	const startAge = 60;
+	const startAge = 67; // Age Pension age — a realistic retirement start (60 is just when you can access super)
 	const endAge = 90;
 	let balance = $state(500000);
 	const growth = 0.045; // real return (≈7% nominal − 2.5% inflation), so figures are in today's dollars
@@ -22,6 +22,15 @@
 
 	const x = (age: number) => 44 + ((age - startAge) / (endAge - startAge)) * 340;
 	const y = (b: number) => 188 - (b / yMax) * 148;
+
+	// Evenly-spaced x-axis age labels (so they stay correct if start/end change).
+	const span = endAge - startAge;
+	const axisTicks = [
+		startAge,
+		Math.round(startAge + span / 3),
+		Math.round(startAge + (2 * span) / 3),
+		endAge
+	];
 
 	// Draw the line only until the money is depleted — end it on the baseline
 	// rather than dragging a flat zero-tail (and a floating dot) across the chart.
@@ -126,10 +135,9 @@
 					{/if}
 
 					<g font-size="11" fill="#93a0b0" text-anchor="middle">
-						<text x="44" y="206">60</text>
-						<text x="157" y="206">70</text>
-						<text x="270" y="206">80</text>
-						<text x="380" y="206">90</text>
+						{#each axisTicks as t}
+							<text x={x(t)} y="206">{t}</text>
+						{/each}
 					</g>
 				</svg>
 
@@ -139,7 +147,7 @@
 							<span>Starting super</span>
 							<b>{money(balance)}</b>
 						</div>
-						<input type="range" min="100000" max="3000000" step="25000" bind:value={balance} />
+						<input type="range" min="100000" max="1000000" step="25000" bind:value={balance} />
 					</div>
 					<div class="slider">
 						<div class="slider-top">
