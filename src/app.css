@@ -959,10 +959,6 @@ h2 {
 	gap: 5px;
 	align-items: center;
 }
-.spend-head.couple,
-.spend-row.couple {
-	grid-template-columns: minmax(0, 1fr) 64px 46px 56px 62px 20px;
-}
 .spend-head {
 	font-size: 11px;
 	color: var(--muted);
@@ -1034,12 +1030,6 @@ h2 {
 	font-size: 16px;
 	color: var(--navy);
 	font-variant-numeric: tabular-nums;
-}
-.spend-split {
-	line-height: 1.5;
-}
-.spend-split em {
-	color: #93a0b0;
 }
 
 @media (max-width: 800px) {

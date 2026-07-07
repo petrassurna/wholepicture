@@ -25,11 +25,6 @@ describe('IncomeSource', () => {
 		expect(taxFree.grossAt(67)).toBe(20_000);
 		expect(taxFree.taxableAt(67)).toBe(0);
 	});
-
-	it('defaults to joint ownership', () => {
-		expect(work.owner).toBe('joint');
-		expect(new IncomeSource('mine', 10_000, 67, 90, true, 'a').owner).toBe('a');
-	});
 });
 
 describe('grossIncomeAt / taxableIncomeAt', () => {

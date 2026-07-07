@@ -72,7 +72,7 @@ describe('bank interest is taxed once it clears the thresholds', () => {
 describe('a couple pays less than a single on the same income', () => {
 	it('splitting $60k of rent across two thresholds cuts the tax', () => {
 		const assets = [new Super(600_000, 0.07)];
-		const incomes = [new IncomeSource('rent', 60_000, 67, 95, true, 'joint')];
+		const incomes = [new IncomeSource('rent', 60_000, 67, 95, true)];
 		const single = run(assets, new Household('single', incomes));
 		const couple = run(assets, new Household('couple', incomes));
 

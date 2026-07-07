@@ -60,7 +60,7 @@
 							<div class="field-head">
 								<label for="household">Household</label>
 								<Help
-									text="Single or a couple. A couple is taxed as two people — two tax-free thresholds and two seniors offsets — so the same income is usually taxed less. Assets are split 50/50; you can assign each income to a partner below."
+									text="Single or a couple. A couple is taxed as two people — two tax-free thresholds and two seniors offsets — so the same taxable income is usually taxed less. Assessable income is split 50/50 between partners."
 								/>
 							</div>
 							<select
@@ -119,16 +119,15 @@
 							<p class="field-note">Prefer detail? Add line items and we'll total them for you.</p>
 						{:else}
 							<div class="spend-list">
-								<div class="spend-head" class:couple={plan.household === 'couple'}>
+								<div class="spend-head">
 									<span class="spend-col-name">Item</span>
 									<span>Amount</span>
 									<span>×</span>
-									{#if plan.household === 'couple'}<span>Who</span>{/if}
 									<span class="spend-col-total">Total</span>
 									<span></span>
 								</div>
 								{#each plan.spendItems as item, i (item)}
-									<div class="spend-row" class:couple={plan.household === 'couple'}>
+									<div class="spend-row">
 										<input
 											class="spend-name"
 											type="text"
@@ -150,13 +149,6 @@
 											aria-label="Times per year"
 											bind:value={item.quantity}
 										/>
-										{#if plan.household === 'couple'}
-											<select class="spend-owner" aria-label="Who" bind:value={item.owner}>
-												<option value="joint">Both</option>
-												<option value="a">A</option>
-												<option value="b">B</option>
-											</select>
-										{/if}
 										<span class="spend-line">{money(item.amount * item.quantity)}</span>
 										<button
 											type="button"
@@ -171,14 +163,6 @@
 									<strong>{money(plan.spend)}</strong>
 								</div>
 							</div>
-							{#if plan.household === 'couple'}
-								<p class="field-note spend-split">
-									Person A {money(plan.spendBreakdown.a)} · Person B {money(plan.spendBreakdown.b)} ·
-									Both
-									{money(plan.spendBreakdown.shared)}
-									<em>(shared pot — split is for reference only)</em>
-								</p>
-							{/if}
 						{/if}
 						<button type="button" class="add-btn" onclick={() => plan.addSpendItem()}>
 							+ Add item
@@ -291,9 +275,10 @@
 				{#if open.income}
 					<div class="acc-body">
 						<p class="field-note">
-							Part-time work, rent or other income during retirement. It reduces how much you draw
-							from your pot for the years you receive it, and is taxed at your rate above (your
-							super pension isn't).
+							Part-time work, rent or other income during retirement.
+							<Help
+								text="It reduces how much you draw from your pot for the years you receive it, and is taxed at your marginal rate (your super pension isn't)."
+							/>
 						</p>
 						{#each plan.incomeSources as inc, i (inc)}
 							<div class="bank-acct">
@@ -339,16 +324,6 @@
 											/>
 										</div>
 									</div>
-									{#if plan.household === 'couple'}
-										<div class="field">
-											<label for={`inc-owner-${i}`}>Belongs to</label>
-											<select id={`inc-owner-${i}`} bind:value={inc.owner}>
-												<option value="joint">Joint (split 50/50)</option>
-												<option value="a">Person A</option>
-												<option value="b">Person B</option>
-											</select>
-										</div>
-									{/if}
 								</div>
 							</div>
 						{/each}

@@ -4,21 +4,14 @@
 
 import { Super, BankAccount, type Asset } from '$lib/domain/assets';
 import { realReturn } from '$lib/domain/projection';
-import { IncomeSource, type Owner } from '$lib/domain/income';
+import { IncomeSource } from '$lib/domain/income';
 import { Household } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
 type BankInput = { name: string; amount: number; rate: number };
-type IncomeInput = {
-	label: string;
-	amount: number;
-	fromAge: number;
-	toAge: number;
-	owner: Owner;
-};
-// A spending line item: amount × quantity = yearly cost. Owner is informational
-// (couples), so you can see who spends what; the projection uses the total.
-type SpendItem = { name: string; amount: number; quantity: number; owner: Owner };
+type IncomeInput = { label: string; amount: number; fromAge: number; toAge: number };
+// A spending line item: amount × quantity = yearly cost.
+type SpendItem = { name: string; amount: number; quantity: number };
 
 const STORAGE_KEY = 'wholepicture.plan.v1';
 
@@ -37,48 +30,48 @@ function defaultSpendItems(filing: Filing): SpendItem[] {
 	if (filing === 'single') {
 		// ≈ ASFA "comfortable" single, $52,200/yr (homeowner). Largest first.
 		return [
-			{ name: 'Food', amount: 730, quantity: 12, owner: 'joint' }, // 8,760
-			{ name: 'Holidays', amount: 7000, quantity: 1, owner: 'joint' }, // 7,000
-			{ name: 'Car', amount: 6000, quantity: 1, owner: 'joint' }, // 6,000
-			{ name: 'Entertainment', amount: 95, quantity: 52, owner: 'joint' }, // 4,940
-			{ name: 'Medical/dentist', amount: 3500, quantity: 1, owner: 'joint' }, // 3,500
-			{ name: 'Rates', amount: 797, quantity: 4, owner: 'joint' }, // 3,188
-			{ name: 'Private health insurance', amount: 250, quantity: 12, owner: 'joint' }, // 3,000
-			{ name: 'Home repairs', amount: 2800, quantity: 1, owner: 'joint' }, // 2,800
-			{ name: 'Household goods', amount: 1972, quantity: 1, owner: 'joint' }, // 1,972 (balances to $52,200)
-			{ name: 'Clothes & personal care', amount: 1800, quantity: 1, owner: 'joint' }, // 1,800
-			{ name: 'Home insurance', amount: 1700, quantity: 1, owner: 'joint' }, // 1,700
-			{ name: 'Gifts & donations', amount: 1500, quantity: 1, owner: 'joint' }, // 1,500
-			{ name: 'Water', amount: 350, quantity: 4, owner: 'joint' }, // 1,400
-			{ name: 'Electricity', amount: 350, quantity: 4, owner: 'joint' }, // 1,400
-			{ name: 'Gas', amount: 300, quantity: 4, owner: 'joint' }, // 1,200
-			{ name: 'Internet', amount: 95, quantity: 12, owner: 'joint' }, // 1,140
-			{ name: 'Transport', amount: 500, quantity: 1, owner: 'joint' }, // 500
-			{ name: 'Mobile', amount: 300, quantity: 1, owner: 'joint' }, // 300
-			{ name: 'Glasses', amount: 100, quantity: 1, owner: 'joint' } // 100
+			{ name: 'Food', amount: 730, quantity: 12 }, // 8,760
+			{ name: 'Holidays', amount: 7000, quantity: 1 }, // 7,000
+			{ name: 'Car', amount: 6000, quantity: 1 }, // 6,000
+			{ name: 'Entertainment', amount: 95, quantity: 52 }, // 4,940
+			{ name: 'Medical/dentist', amount: 3500, quantity: 1 }, // 3,500
+			{ name: 'Rates', amount: 797, quantity: 4 }, // 3,188
+			{ name: 'Private health insurance', amount: 250, quantity: 12 }, // 3,000
+			{ name: 'Home repairs', amount: 2800, quantity: 1 }, // 2,800
+			{ name: 'Household goods', amount: 1972, quantity: 1 }, // 1,972 (balances to $52,200)
+			{ name: 'Clothes & personal care', amount: 1800, quantity: 1 }, // 1,800
+			{ name: 'Home insurance', amount: 1700, quantity: 1 }, // 1,700
+			{ name: 'Gifts & donations', amount: 1500, quantity: 1 }, // 1,500
+			{ name: 'Water', amount: 350, quantity: 4 }, // 1,400
+			{ name: 'Electricity', amount: 350, quantity: 4 }, // 1,400
+			{ name: 'Gas', amount: 300, quantity: 4 }, // 1,200
+			{ name: 'Internet', amount: 95, quantity: 12 }, // 1,140
+			{ name: 'Transport', amount: 500, quantity: 1 }, // 500
+			{ name: 'Mobile', amount: 300, quantity: 1 }, // 300
+			{ name: 'Glasses', amount: 100, quantity: 1 } // 100
 		];
 	}
 	// ≈ ASFA "comfortable" couple, $73,500/yr (homeowners). Largest first.
 	return [
-		{ name: 'Food', amount: 1300, quantity: 12, owner: 'joint' }, // 15,600
-		{ name: 'Holidays', amount: 10000, quantity: 1, owner: 'joint' }, // 10,000
-		{ name: 'Entertainment', amount: 135, quantity: 52, owner: 'joint' }, // 7,020
-		{ name: 'Car', amount: 7000, quantity: 1, owner: 'joint' }, // 7,000
-		{ name: 'Medical/dentist', amount: 5000, quantity: 1, owner: 'joint' }, // 5,000
-		{ name: 'Private health insurance', amount: 400, quantity: 12, owner: 'joint' }, // 4,800
-		{ name: 'Home repairs', amount: 3500, quantity: 1, owner: 'joint' }, // 3,500
-		{ name: 'Rates', amount: 797, quantity: 4, owner: 'joint' }, // 3,188
-		{ name: 'Household goods', amount: 2972, quantity: 1, owner: 'joint' }, // 2,972 (balances to $73,500)
-		{ name: 'Clothes & personal care', amount: 2800, quantity: 1, owner: 'joint' }, // 2,800
-		{ name: 'Gifts & donations', amount: 2500, quantity: 1, owner: 'joint' }, // 2,500
-		{ name: 'Home insurance', amount: 1700, quantity: 1, owner: 'joint' }, // 1,700
-		{ name: 'Water', amount: 420, quantity: 4, owner: 'joint' }, // 1,680
-		{ name: 'Electricity', amount: 400, quantity: 4, owner: 'joint' }, // 1,600
-		{ name: 'Gas', amount: 400, quantity: 4, owner: 'joint' }, // 1,600
-		{ name: 'Internet', amount: 95, quantity: 12, owner: 'joint' }, // 1,140
-		{ name: 'Mobile', amount: 300, quantity: 2, owner: 'joint' }, // 600
-		{ name: 'Transport', amount: 600, quantity: 1, owner: 'joint' }, // 600
-		{ name: 'Glasses', amount: 100, quantity: 2, owner: 'joint' } // 200
+		{ name: 'Food', amount: 1300, quantity: 12 }, // 15,600
+		{ name: 'Holidays', amount: 10000, quantity: 1 }, // 10,000
+		{ name: 'Entertainment', amount: 135, quantity: 52 }, // 7,020
+		{ name: 'Car', amount: 7000, quantity: 1 }, // 7,000
+		{ name: 'Medical/dentist', amount: 5000, quantity: 1 }, // 5,000
+		{ name: 'Private health insurance', amount: 400, quantity: 12 }, // 4,800
+		{ name: 'Home repairs', amount: 3500, quantity: 1 }, // 3,500
+		{ name: 'Rates', amount: 797, quantity: 4 }, // 3,188
+		{ name: 'Household goods', amount: 2972, quantity: 1 }, // 2,972 (balances to $73,500)
+		{ name: 'Clothes & personal care', amount: 2800, quantity: 1 }, // 2,800
+		{ name: 'Gifts & donations', amount: 2500, quantity: 1 }, // 2,500
+		{ name: 'Home insurance', amount: 1700, quantity: 1 }, // 1,700
+		{ name: 'Water', amount: 420, quantity: 4 }, // 1,680
+		{ name: 'Electricity', amount: 400, quantity: 4 }, // 1,600
+		{ name: 'Gas', amount: 400, quantity: 4 }, // 1,600
+		{ name: 'Internet', amount: 95, quantity: 12 }, // 1,140
+		{ name: 'Mobile', amount: 300, quantity: 2 }, // 600
+		{ name: 'Transport', amount: 600, quantity: 1 }, // 600
+		{ name: 'Glasses', amount: 100, quantity: 2 } // 200
 	];
 }
 
@@ -129,7 +122,7 @@ class Plan {
 
 	get incomes(): IncomeSource[] {
 		return this.incomeSources.map(
-			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true, s.owner ?? 'joint')
+			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true)
 		);
 	}
 
@@ -147,19 +140,6 @@ class Plan {
 		return this.spendItems.length
 			? this.spendItems.reduce((sum, it) => sum + it.amount * it.quantity, 0)
 			: this.spendPerYear;
-	}
-
-	/** Informational per-person spend subtotals (couples). Projection uses `total`. */
-	get spendBreakdown(): { a: number; b: number; shared: number; total: number } {
-		const t = { a: 0, b: 0, shared: 0, total: 0 };
-		for (const it of this.spendItems) {
-			const line = it.amount * it.quantity;
-			if (it.owner === 'a') t.a += line;
-			else if (it.owner === 'b') t.b += line;
-			else t.shared += line;
-			t.total += line;
-		}
-		return t;
 	}
 
 	/** Whether any assessable income exists — drives the Tax view's visibility. */
@@ -220,8 +200,7 @@ class Plan {
 			label: '',
 			amount: 0,
 			fromAge: this.retireAge,
-			toAge: this.retireAge + 5,
-			owner: 'joint'
+			toAge: this.retireAge + 5
 		});
 	}
 
@@ -230,7 +209,7 @@ class Plan {
 	}
 
 	addSpendItem() {
-		this.spendItems.push({ name: '', amount: 0, quantity: 1, owner: 'joint' });
+		this.spendItems.push({ name: '', amount: 0, quantity: 1 });
 	}
 
 	removeSpendItem(i: number) {
@@ -277,8 +256,7 @@ class Plan {
 							label: String(s.label ?? ''),
 							amount: s.amount,
 							fromAge: s.fromAge,
-							toAge: s.toAge,
-							owner: s.owner === 'a' || s.owner === 'b' || s.owner === 'joint' ? s.owner : 'joint'
+							toAge: s.toAge
 						}));
 				}
 				if (Array.isArray(d.spendItems)) {
@@ -290,9 +268,7 @@ class Plan {
 						.map((it: SpendItem) => ({
 							name: String(it.name ?? ''),
 							amount: it.amount,
-							quantity: it.quantity,
-							owner:
-								it.owner === 'a' || it.owner === 'b' || it.owner === 'joint' ? it.owner : 'joint'
+							quantity: it.quantity
 						}));
 				}
 			}

@@ -4,17 +4,13 @@
 // here are GROSS; tax is assessed centrally on total assessable income (see
 // household.ts), never per-source, because tax is progressive.
 
-/** Who a source belongs to (for a couple's per-person tax). 'joint' splits 50/50. */
-export type Owner = 'a' | 'b' | 'joint';
-
 export class IncomeSource {
 	constructor(
 		readonly label: string,
 		readonly amount: number, // gross per year, today's dollars
 		readonly fromAge: number,
 		readonly toAge: number,
-		readonly taxable: boolean = true,
-		readonly owner: Owner = 'joint'
+		readonly taxable: boolean = true
 	) {}
 
 	activeAt(age: number): boolean {
