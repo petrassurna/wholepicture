@@ -19,11 +19,13 @@ export interface RealCtx {
 export class IncomeSource {
 	constructor(
 		readonly label: string,
-		readonly amount: number, // gross per year, today's dollars
+		readonly amount: number, // gross per year, today's dollars (a salary when toSuper)
 		readonly fromAge: number,
 		readonly toAge: number,
 		readonly taxable: boolean = true,
-		readonly indexed: boolean = true // rises with inflation (constant real value)
+		readonly indexed: boolean = true, // rises with inflation (constant real value)
+		readonly toSuper: boolean = false, // pays into super rather than being spendable income
+		readonly superRate: number = 1 // fraction of the amount that goes into super (when toSuper)
 	) {}
 
 	activeAt(age: number): boolean {
@@ -43,12 +45,19 @@ export class IncomeSource {
 	}
 }
 
-/** Total gross income at an age across all sources. */
+/** Total spendable gross income at an age (super contributions are excluded —
+ *  they go into the pot, they don't offset spending). */
 export function grossIncomeAt(sources: IncomeSource[], age: number, ctx?: RealCtx): number {
-	return sources.reduce((sum, s) => sum + s.grossAt(age, ctx), 0);
+	return sources.reduce((sum, s) => (s.toSuper ? sum : sum + s.grossAt(age, ctx)), 0);
 }
 
-/** Total assessable income at an age across all sources. */
+/** Total assessable income at an age (super contributions excluded). */
 export function taxableIncomeAt(sources: IncomeSource[], age: number, ctx?: RealCtx): number {
-	return sources.reduce((sum, s) => sum + s.taxableAt(age, ctx), 0);
+	return sources.reduce((sum, s) => (s.toSuper ? sum : sum + s.taxableAt(age, ctx)), 0);
+}
+
+/** Total gross super contributions at an age — the `superRate` share of each
+ *  toSuper source (e.g. 11.5% SG on a salary). Contributions tax is applied later. */
+export function contributionsAt(sources: IncomeSource[], age: number, ctx?: RealCtx): number {
+	return sources.reduce((sum, s) => (s.toSuper ? sum + s.grossAt(age, ctx) * s.superRate : sum), 0);
 }

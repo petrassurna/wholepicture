@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ProjectionChart from '$lib/components/ProjectionChart.svelte';
+	import Calculations from '$lib/components/Calculations.svelte';
 	import Help from '$lib/components/Help.svelte';
 	import MoneyInput from '$lib/components/MoneyInput.svelte';
 	import H1 from '$lib/components/H1.svelte';
@@ -45,6 +46,7 @@
 					only — real returns, tax and future spending will differ.
 				</p>
 			</div>
+			<Calculations />
 		</div>
 
 		<!-- Inputs: collapsible sections -->
@@ -72,6 +74,15 @@
 								<option value="single">Single</option>
 								<option value="couple">Couple</option>
 							</select>
+						</div>
+						<div class="field">
+							<div class="field-head">
+								<label for="agenow">Age now</label>
+								<Help
+									text="Your current age. If it's below your retirement age, the projection runs an accumulation phase first — your super keeps growing and any income marked 'pays into super' is added, until you retire and start drawing. Leave it equal to your retirement age if you're retiring now."
+								/>
+							</div>
+							<input id="agenow" type="number" min="18" max="80" bind:value={plan.currentAge} />
 						</div>
 						<div class="field">
 							<div class="field-head">
@@ -295,7 +306,9 @@
 							<div class="bank-acct">
 								<div class="bank-acct-top">
 									<div class="field" style="flex: 1">
-										<label for={`inc-amt-${i}`}>Amount ($/yr)</label>
+										<label for={`inc-amt-${i}`}
+											>{inc.toSuper ? 'Salary ($/yr)' : 'Amount ($/yr)'}</label
+										>
 										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
 									</div>
 									<button
@@ -344,6 +357,33 @@
 											text="Tick if this income rises with inflation (most wages and rents do) — its buying power stays the same. Untick for an amount fixed in dollars (e.g. a level annuity); its real value then shrinks each year."
 										/>
 									</label>
+									<label class="check">
+										<input type="checkbox" bind:checked={inc.toSuper} />
+										<span>Pays into super</span>
+										<Help
+											text="Tick if this is a salary you're still earning, and only part of it goes into super — the employer contribution (SG, currently 11.5%) plus any salary sacrifice. Set the percentage below. That share is added to super over the years shown (less the 15% contributions tax); the rest of the salary is your living money and isn't modelled. Useful for the years before retirement."
+										/>
+									</label>
+									{#if inc.toSuper}
+										<div class="field">
+											<div class="field-head">
+												<label for={`inc-superpct-${i}`}>% of salary into super</label>
+												<Help
+													text="The employer SG is 11.5% (rising to 12%). Add any salary sacrifice on top — e.g. 11.5% + a 5% sacrifice = 16.5%."
+												/>
+											</div>
+											<input
+												id={`inc-superpct-${i}`}
+												type="number"
+												step="0.5"
+												min="0"
+												max="100"
+												value={pct(inc.superRate)}
+												oninput={(e) =>
+													(inc.superRate = (Number(e.currentTarget.value) || 0) / 100)}
+											/>
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/each}

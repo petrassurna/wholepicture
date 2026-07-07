@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { IncomeSource, grossIncomeAt, taxableIncomeAt } from './income';
+import { IncomeSource, grossIncomeAt, taxableIncomeAt, contributionsAt } from './income';
 
 // Amounts are GROSS now (tax is assessed centrally in the household). Window
 // boundaries and the taxable flag are checked explicitly.
@@ -86,5 +86,32 @@ describe('grossIncomeAt / taxableIncomeAt', () => {
 	it('is zero with no sources', () => {
 		expect(grossIncomeAt([], 70)).toBe(0);
 		expect(taxableIncomeAt([], 70)).toBe(0);
+	});
+});
+
+describe('super contributions (toSuper)', () => {
+	// A $100k salary paying 11.5% into super during the working years, plus rent.
+	const salary = new IncomeSource('salary', 100_000, 57, 66, true, true, true, 0.115);
+	const rent = new IncomeSource('rent', 20_000, 67, 90, true, true, false);
+	const sources = [salary, rent];
+
+	it('only the superRate share of the salary is contributed', () => {
+		expect(contributionsAt(sources, 60)).toBeCloseTo(11_500, 6); // 100k × 11.5%
+		expect(grossIncomeAt(sources, 60)).toBe(0); // salary isn't spendable income here
+		expect(taxableIncomeAt(sources, 60)).toBe(0); // and isn't drawdown-assessable
+	});
+
+	it('a full contribution (superRate 1) puts the whole amount in', () => {
+		const sacrifice = new IncomeSource('sac', 15_000, 57, 66, true, true, true, 1);
+		expect(contributionsAt([sacrifice], 60)).toBe(15_000);
+	});
+
+	it('spendable income excludes contributions and vice versa', () => {
+		expect(grossIncomeAt(sources, 70)).toBe(20_000); // rent only
+		expect(contributionsAt(sources, 70)).toBe(0); // salary window has ended
+	});
+
+	it('is zero outside the contribution window', () => {
+		expect(contributionsAt(sources, 67)).toBe(0);
 	});
 });

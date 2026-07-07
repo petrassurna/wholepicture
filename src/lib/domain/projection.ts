@@ -17,19 +17,27 @@ import { isTaxable } from './assets';
 export type Scenario = 'average' | 'bad';
 
 export interface Assumptions {
-	startAge: number;
+	startAge: number; // timeline start (age now)
 	endAge: number;
 	spend: number; // per year, today's dollars (flat in real terms)
 	inflation: number;
-	downturn: number; // bad case: one-off crash in year 1
+	downturn: number; // bad case: one-off crash in year 1 of drawdown
 	recoveryYears: number; // ...that climbs back to its pre-crash level over N years
+	/** Age drawdown begins. Before it, the plan is in accumulation (contributions in,
+	 *  no spending). Defaults to startAge — i.e. retiring now, no accumulation phase. */
+	retireAge?: number;
 	/** Gross income at an age (offsets spending) and its taxable portion (reported). */
 	incomeAt?: (age: number) => { gross: number; taxable: number };
 	/** Tax on the year's assessable income, given investment income from taxable assets. */
 	taxOn?: (assetAssessable: number, age: number) => number;
 	/** Tax-free Age Pension for the year, given the opening financial assets. */
 	pensionAt?: (financialAssets: number, age: number) => number;
+	/** Net super contribution landing in the fund at an age (accumulation phase). */
+	contributionAt?: (age: number) => number;
 }
+
+/** Super fund earnings are taxed 15% in the accumulation phase (0% in pension phase). */
+const ACCUMULATION_EARNINGS_TAX = 0.15;
 
 export interface Point {
 	age: number;
@@ -64,9 +72,21 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 	const incomeAt = a.incomeAt ?? (() => ({ gross: 0, taxable: 0 }));
 	const pensionAt = a.pensionAt ?? (() => 0);
 	const taxOn = a.taxOn ?? (() => 0);
+	const contributionAt = a.contributionAt ?? (() => 0);
+
+	// Drawdown begins at retireAge; before it we accumulate. Clamp so a plan whose
+	// retirement is already past just draws down from now.
+	const retireAge = Math.max(a.retireAge ?? a.startAge, a.startAge);
+	// Contributions land in super — the first non-taxable asset (or the first asset).
+	const superIdx = Math.max(0, assets.findIndex((x) => !isTaxable(x)));
 
 	const bals = assets.map((x) => x.balance);
-	const growth = assets.map((x) => realReturn(x.nominalReturn, a.inflation));
+	// Drawdown-phase real growth (super tax-free); accumulation-phase growth carries
+	// the 15% earnings-tax drag on all assets.
+	const growthDraw = assets.map((x) => realReturn(x.nominalReturn, a.inflation));
+	const growthAccum = assets.map((x) =>
+		realReturn(x.nominalReturn * (1 - ACCUMULATION_EARNINGS_TAX), a.inflation)
+	);
 	// A return that climbs from the post-crash level back to the pre-crash level
 	// over `recoveryYears`; normal growth resumes afterwards.
 	const recoveryReturn =
@@ -79,6 +99,15 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 	for (let age = a.startAge; age <= a.endAge; age++) {
 		const opening = bals.reduce((s, b) => s + Math.max(0, b), 0);
 
+		// --- Accumulation phase: still working, paying into super, not drawing ---
+		if (age < retireAge) {
+			points.push({ age, balance: Math.max(0, opening), tax: 0, assessableIncome: 0 });
+			bals[superIdx] += contributionAt(age);
+			for (let i = 0; i < bals.length; i++) bals[i] *= 1 + growthAccum[i];
+			continue;
+		}
+
+		// --- Drawdown phase ---
 		// This year's assessable investment income, on opening balances.
 		let assetAssessable = 0;
 		for (let i = 0; i < assets.length; i++) {
@@ -114,10 +143,11 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 			continue;
 		}
 
-		// Grow each asset at its own return (the crash hits the whole portfolio).
-		const t = age - a.startAge;
+		// Grow each asset at its own return. The bad-case crash is timed to the start
+		// of drawdown (sequence risk), so it hits the whole portfolio at retirement.
+		const t = age - retireAge;
 		for (let i = 0; i < bals.length; i++) {
-			let g = growth[i];
+			let g = growthDraw[i];
 			if (scenario === 'bad') {
 				if (t === 0) g = -a.downturn;
 				else if (t <= a.recoveryYears) g = recoveryReturn;

@@ -3,7 +3,7 @@
 // and exposes the domain objects derived from them.
 
 import { Super, BankAccount, type Asset } from '$lib/domain/assets';
-import { realReturn } from '$lib/domain/projection';
+import { realReturn, type Assumptions } from '$lib/domain/projection';
 import { IncomeSource } from '$lib/domain/income';
 import { Household } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
@@ -15,6 +15,8 @@ type IncomeInput = {
 	fromAge: number;
 	toAge: number;
 	indexed: boolean;
+	toSuper: boolean;
+	superRate: number; // fraction of the amount paid into super (SG default 0.115)
 };
 
 // How often a spending amount recurs, and how many times a year that is.
@@ -108,6 +110,7 @@ class Plan {
 
 	// You / timeframe
 	spendPerYear = $state(DEFAULTS.single.spendPerYear);
+	currentAge = $state(67); // age now; if below retireAge you get an accumulation phase
 	retireAge = $state(67);
 	planToAge = $state(90);
 
@@ -148,7 +151,17 @@ class Plan {
 
 	get incomes(): IncomeSource[] {
 		return this.incomeSources.map(
-			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true, s.indexed ?? true)
+			(s) =>
+				new IncomeSource(
+					s.label,
+					s.amount,
+					s.fromAge,
+					s.toAge,
+					true,
+					s.indexed ?? true,
+					s.toSuper ?? false,
+					s.superRate ?? 0.115
+				)
 		);
 	}
 
@@ -203,6 +216,29 @@ class Plan {
 		return this.includePension ? this.taxUnit.agePensionAt(financialAssets, age) : 0;
 	}
 
+	/** Net super contribution landing in the fund at an age (accumulation phase). */
+	contributionAt(age: number): number {
+		return this.taxUnit.contributionAt(age, this.realCtx);
+	}
+
+	/** The full set of projection assumptions — used by both the chart and the
+	 *  calculations panel so they always describe the same run. */
+	buildAssumptions(): Assumptions {
+		return {
+			startAge: this.currentAge,
+			retireAge: this.retireAge,
+			endAge: this.planToAge,
+			spend: this.spend,
+			inflation: this.inflation,
+			downturn: this.downturn,
+			recoveryYears: this.recoveryYears,
+			incomeAt: (age) => this.incomeAt(age),
+			taxOn: (assess, age) => this.taxOn(assess, age),
+			pensionAt: (assets, age) => this.pensionAt(assets, age),
+			contributionAt: (age) => this.contributionAt(age)
+		};
+	}
+
 	// Super slider ceiling depends on household (a couple's combined pot is bigger).
 	get superMax() {
 		return DEFAULTS[this.household].superMax;
@@ -238,7 +274,9 @@ class Plan {
 			amount: 0,
 			fromAge: this.retireAge,
 			toAge: this.retireAge + 5,
-			indexed: true
+			indexed: true,
+			toSuper: false,
+			superRate: 0.115
 		});
 	}
 
@@ -263,6 +301,7 @@ class Plan {
 				const d = JSON.parse(raw);
 				if (d.household === 'single' || d.household === 'couple') this.household = d.household;
 				if (typeof d.spendPerYear === 'number') this.spendPerYear = d.spendPerYear;
+				if (typeof d.currentAge === 'number') this.currentAge = d.currentAge;
 				if (typeof d.retireAge === 'number') this.retireAge = d.retireAge;
 				if (typeof d.planToAge === 'number') this.planToAge = d.planToAge;
 				if (typeof d.superBalance === 'number') this.superBalance = d.superBalance;
@@ -296,7 +335,9 @@ class Plan {
 							amount: s.amount,
 							fromAge: s.fromAge,
 							toAge: s.toAge,
-							indexed: typeof s.indexed === 'boolean' ? s.indexed : true
+							indexed: typeof s.indexed === 'boolean' ? s.indexed : true,
+							toSuper: typeof s.toSuper === 'boolean' ? s.toSuper : false,
+							superRate: typeof s.superRate === 'number' ? s.superRate : 0.115
 						}));
 				}
 				if (Array.isArray(d.spendItems)) {
@@ -336,6 +377,7 @@ class Plan {
 		const json = JSON.stringify({
 			household: this.household,
 			spendPerYear: this.spendPerYear,
+			currentAge: this.currentAge,
 			retireAge: this.retireAge,
 			planToAge: this.planToAge,
 			superBalance: this.superBalance,
@@ -363,6 +405,7 @@ class Plan {
 		this.household = 'single';
 		this.superBalance = DEFAULTS.single.superBalance;
 		this.spendPerYear = DEFAULTS.single.spendPerYear;
+		this.currentAge = 67;
 		this.retireAge = 67;
 		this.planToAge = 90;
 		this.superReturn = 0.07;

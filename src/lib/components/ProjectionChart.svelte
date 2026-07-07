@@ -12,17 +12,7 @@
 		if (!showTaxTab && view === 'tax') view = 'balance';
 	});
 
-	const assumptions = $derived<Assumptions>({
-		startAge: plan.retireAge,
-		endAge: plan.planToAge,
-		spend: plan.spend,
-		inflation: plan.inflation,
-		downturn: plan.downturn,
-		recoveryYears: plan.recoveryYears,
-		incomeAt: (age) => plan.incomeAt(age),
-		taxOn: (assetAssessable, age) => plan.taxOn(assetAssessable, age),
-		pensionAt: (assets, age) => plan.pensionAt(assets, age)
-	});
+	const assumptions = $derived<Assumptions>(plan.buildAssumptions());
 	const avg = $derived(project(plan.assets, assumptions, 'average'));
 	const bad = $derived(project(plan.assets, assumptions, 'bad'));
 
@@ -50,18 +40,17 @@
 		return ticks;
 	});
 
-	const x = (age: number) => 44 + ((age - plan.retireAge) / (plan.planToAge - plan.retireAge)) * 340;
-	// Plot spans y 56 (top) → 188 (bottom); the 56 start leaves ~20px under the legend.
-	const y = (b: number) => 188 - (b / balAxisMax) * 132;
+	// The timeline starts at your current age (which equals the retirement age when
+	// there's no accumulation phase) and runs to the plan-to age.
+	const t0 = $derived(plan.currentAge);
+	const x = (age: number) => 44 + ((age - t0) / (plan.planToAge - t0)) * 340;
+	// Plot spans y 68 (top) → 188 (bottom); the 68 start leaves clear space under the
+	// two-row legend (Average / Bad case).
+	const y = (b: number) => 188 - (b / balAxisMax) * 120;
 
 	const axisTicks = $derived.by(() => {
-		const span = plan.planToAge - plan.retireAge;
-		return [
-			plan.retireAge,
-			Math.round(plan.retireAge + span / 3),
-			Math.round(plan.retireAge + (2 * span) / 3),
-			plan.planToAge
-		];
+		const span = plan.planToAge - t0;
+		return [t0, Math.round(t0 + span / 3), Math.round(t0 + (2 * span) / 3), plan.planToAge];
 	});
 
 	const drawn = (p: Projection) => {
@@ -117,15 +106,21 @@
 
 	// Hover readout (shared — only one view is visible at a time).
 	let hoverAge = $state<number | null>(null);
-	const hp = $derived(hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null));
-	const hAvg = $derived(hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null));
-	const hBad = $derived(hoverAge == null ? null : (bad.points.find((p) => p.age === hoverAge) ?? null));
+	const hp = $derived(
+		hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null)
+	);
+	const hAvg = $derived(
+		hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null)
+	);
+	const hBad = $derived(
+		hoverAge == null ? null : (bad.points.find((p) => p.age === hoverAge) ?? null)
+	);
 	const fmtFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
 	function onHover(e: PointerEvent) {
 		const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
 		const vbX = ((e.clientX - rect.left) / rect.width) * 400;
-		const raw = plan.retireAge + ((vbX - 44) / 340) * (plan.planToAge - plan.retireAge);
-		hoverAge = Math.round(Math.min(plan.planToAge, Math.max(plan.retireAge, raw)));
+		const raw = t0 + ((vbX - 44) / 340) * (plan.planToAge - t0);
+		hoverAge = Math.round(Math.min(plan.planToAge, Math.max(t0, raw)));
 	}
 </script>
 
@@ -143,7 +138,8 @@
 			<button type="button" class:active={view === 'balance'} onclick={() => (view = 'balance')}
 				>Balance</button
 			>
-			<button type="button" class:active={view === 'tax'} onclick={() => (view = 'tax')}>Tax</button>
+			<button type="button" class:active={view === 'tax'} onclick={() => (view = 'tax')}>Tax</button
+			>
 		</div>
 	{:else if household}
 		<div class="toggle" role="group" aria-label="Household">
@@ -208,14 +204,24 @@
 			{@const hx = x(hp.age)}
 			{@const flip = hx > 210}
 			<g pointer-events="none">
-				<line x1={hx} y1="40" x2={hx} y2="188" stroke="#cbd3dd" stroke-width="1" stroke-dasharray="3 3" />
+				<line
+					x1={hx}
+					y1="40"
+					x2={hx}
+					y2="188"
+					stroke="#cbd3dd"
+					stroke-width="1"
+					stroke-dasharray="3 3"
+				/>
 				<circle cx={hx} cy={yt(hp.assessableIncome)} r="3.4" fill="#0f2540" />
 				<circle cx={hx} cy={yt(hp.tax)} r="3.4" fill="#c9a24b" />
 				<g transform={`translate(${flip ? hx - 128 : hx + 10}, 44)`}>
 					<rect width="118" height="58" rx="6" fill="#0f2540" opacity="0.96" />
 					<text x="10" y="18" font-size="12" font-weight="700" fill="#fff">Age {hp.age}</text>
 					<circle cx="13" cy="33" r="3" fill="#8fa6c4" />
-					<text x="22" y="37" font-size="11.5" fill="#dce4ef">Income {fmtFull(hp.assessableIncome)}</text>
+					<text x="22" y="37" font-size="11.5" fill="#dce4ef"
+						>Income {fmtFull(hp.assessableIncome)}</text
+					>
 					<circle cx="13" cy="48" r="3" fill="#c9a24b" />
 					<text x="22" y="52" font-size="11.5" fill="#dce4ef">Tax {fmtFull(hp.tax)}</text>
 				</g>
@@ -233,8 +239,8 @@
 			Estimated tax each year (average case) — about {compact(totalTax)} over the plan. Bad-case tax runs
 			lower, since a smaller balance earns less interest. Your super pension is never taxed.
 		{:else}
-			No tax due — your assessable income stays under the senior tax-free thresholds. Your super pension
-			is tax-free.
+			No tax due — your assessable income stays under the senior tax-free thresholds. Your super
+			pension is tax-free.
 		{/if}
 	</p>
 {:else}
@@ -257,12 +263,29 @@
 			{/each}
 		</g>
 
+		{#if plan.currentAge < plan.retireAge}
+			<line
+				x1={x(plan.retireAge)}
+				y1="68"
+				x2={x(plan.retireAge)}
+				y2="188"
+				stroke="#c9a24b"
+				stroke-width="1"
+				stroke-dasharray="3 3"
+			/>
+			<text x={x(plan.retireAge)} y="64" font-size="10" fill="#a9812f" text-anchor="middle"
+				>Retire {plan.retireAge}</text
+			>
+		{/if}
+
 		<circle cx="48" cy="12.5" r="3.2" fill="#0f2540" />
 		<text x="57" y="16" font-size="13" font-weight="600" fill="#0f2540"
 			>Average · {label(avgOut)}</text
 		>
 		<circle cx="48" cy="29.5" r="3.2" fill="#d9534f" />
-		<text x="57" y="33" font-size="13" font-weight="600" fill="#d9534f">Bad case · {label(badOut)}</text>
+		<text x="57" y="33" font-size="13" font-weight="600" fill="#d9534f"
+			>Bad case · {label(badOut)}</text
+		>
 
 		<g class="draw">
 			<polyline
@@ -295,7 +318,15 @@
 			{@const hx = x(hAvg.age)}
 			{@const flip = hx > 200}
 			<g pointer-events="none">
-				<line x1={hx} y1="56" x2={hx} y2="188" stroke="#cbd3dd" stroke-width="1" stroke-dasharray="3 3" />
+				<line
+					x1={hx}
+					y1="68"
+					x2={hx}
+					y2="188"
+					stroke="#cbd3dd"
+					stroke-width="1"
+					stroke-dasharray="3 3"
+				/>
 				<circle cx={hx} cy={y(hAvg.balance)} r="3.4" fill="#0f2540" />
 				<circle cx={hx} cy={y(hBad.balance)} r="3.4" fill="#d9534f" />
 				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 60)`}>
@@ -304,7 +335,8 @@
 					<circle cx="13" cy="33" r="3" fill="#8fa6c4" />
 					<text x="22" y="37" font-size="11.5" fill="#dce4ef">Average {fmtFull(hAvg.balance)}</text>
 					<circle cx="13" cy="48" r="3" fill="#d9534f" />
-					<text x="22" y="52" font-size="11.5" fill="#dce4ef">Bad case {fmtFull(hBad.balance)}</text>
+					<text x="22" y="52" font-size="11.5" fill="#dce4ef">Bad case {fmtFull(hBad.balance)}</text
+					>
 				</g>
 			</g>
 		{/if}

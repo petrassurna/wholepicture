@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { taxOwed, TAX_2024_25 as S } from './tax';
 import { Household } from './household';
+import { IncomeSource } from './income';
 
 // Property / fuzz tests for the tax engine. Each tax component is checked against
 // an INDEPENDENTLY re-derived formula (cumulative-offset form, not the piecewise
@@ -144,5 +145,18 @@ describe('Household.taxOn — split logic (fuzz)', () => {
 				prev = t;
 			}
 		}
+	});
+});
+
+describe('Household.contributionAt — 15% concessional tax', () => {
+	it('lands the gross contribution less 15% into super, within the window', () => {
+		const h = new Household('single', [new IncomeSource('sac', 20_000, 57, 66, true, true, true)]);
+		expect(h.contributionAt(60)).toBeCloseTo(20_000 * 0.85, 6); // 17,000 net
+		expect(h.contributionAt(67)).toBe(0); // outside the working window
+	});
+
+	it('ignores spendable (non-toSuper) income', () => {
+		const h = new Household('single', [new IncomeSource('rent', 20_000, 67, 90, true, true, false)]);
+		expect(h.contributionAt(70)).toBe(0);
 	});
 });

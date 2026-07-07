@@ -9,8 +9,17 @@
 // tax-free thresholds and two SAPTOs.
 
 import { taxOwed, CURRENT, type Filing, type TaxScale } from './tax';
-import { grossIncomeAt, taxableIncomeAt, type IncomeSource, type RealCtx } from './income';
+import {
+	grossIncomeAt,
+	taxableIncomeAt,
+	contributionsAt,
+	type IncomeSource,
+	type RealCtx
+} from './income';
 import { agePension } from './pension';
+
+/** Concessional (before-tax) super contributions are taxed 15% going into the fund. */
+const CONTRIBUTIONS_TAX = 0.15;
 
 export class Household {
 	constructor(
@@ -44,5 +53,11 @@ export class Household {
 	 *  v1 assumes the household owns its home (as the spending model does). */
 	agePensionAt(financialAssets: number, age: number): number {
 		return agePension(age, financialAssets, this.filing, true);
+	}
+
+	/** Net super contribution landing in the fund at an age — the gross amount less
+	 *  the 15% concessional contributions tax. */
+	contributionAt(age: number, ctx?: RealCtx): number {
+		return contributionsAt(this.incomes, age, ctx) * (1 - CONTRIBUTIONS_TAX);
 	}
 }

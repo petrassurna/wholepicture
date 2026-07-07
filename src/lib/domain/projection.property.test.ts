@@ -321,3 +321,110 @@ describe('project — Age Pension never shortens longevity, and stabilises modes
 		expect(p.points.at(-1)!.balance).toBeGreaterThan(0);
 	});
 });
+
+describe('project — accumulation phase (pre-retirement)', () => {
+	const at = (p: { points: { age: number; balance: number }[] }, age: number) =>
+		p.points.find((pt) => pt.age === age)!.balance;
+
+	it('grows super at the 15%-earnings-taxed rate before retirement (hand-calc)', () => {
+		// One accumulation year, no contributions. Super 100k @ 7% nominal, 2.5%
+		// inflation. Accumulation real growth = (1 + 0.07×0.85)/(1 + 0.025) − 1.
+		const p = project(
+			[new Super(100_000, 0.07)],
+			{ startAge: 57, retireAge: 67, endAge: 90, spend: 50_000, inflation: 0.025, downturn: 0.3, recoveryYears: 5 },
+			'average'
+		);
+		const expected = 100_000 * ((1 + 0.07 * 0.85) / 1.025);
+		expect(at(p, 57)).toBeCloseTo(100_000, 4);
+		expect(at(p, 58)).toBeCloseTo(expected, 2); // ≈ 103,366, below the tax-free 104,390
+		expect(at(p, 58)).toBeLessThan(100_000 * ((1 + 0.07) / 1.025)); // less than pension-phase growth
+	});
+
+	it('does not draw down or run out during accumulation', () => {
+		const p = project(
+			[new Super(200_000, 0.06)],
+			{ startAge: 55, retireAge: 67, endAge: 90, spend: 80_000, inflation: 0.025, downturn: 0.3, recoveryYears: 5 },
+			'average'
+		);
+		// Balance only grows up to retirement despite the big retirement spend.
+		expect(at(p, 66)).toBeGreaterThan(at(p, 55));
+		expect(p.points.filter((pt) => pt.age < 67).every((pt) => pt.balance > 0)).toBe(true);
+	});
+
+	it('contributions build the balance and never shorten longevity', () => {
+		const base: Assumptions = {
+			startAge: 57,
+			retireAge: 67,
+			endAge: 95,
+			spend: 55_000,
+			inflation: 0.025,
+			downturn: 0.3,
+			recoveryYears: 5
+		};
+		const assets = [new Super(300_000, 0.06)];
+		const none = project(assets, base, 'average');
+		// $10k/yr gross salary sacrifice, ages 57–66 (net $8,500 after 15% tax).
+		const h = new Household('single', [new IncomeSource('sac', 10_000, 57, 66, true, true, true)]);
+		const withContrib = project(
+			assets,
+			{ ...base, contributionAt: (age) => h.contributionAt(age) },
+			'average'
+		);
+		// More in super at retirement, and it lasts at least as long.
+		const bal = (p: typeof none, age: number) => at(p, age);
+		expect(bal(withContrib, 67)).toBeGreaterThan(bal(none, 67));
+		expect(longevity(withContrib)).toBeGreaterThanOrEqual(longevity(none));
+	});
+
+	it('reduces to the plain drawdown model when currentAge equals retireAge', () => {
+		const assets = [new Super(500_000, 0.07)];
+		const common = { endAge: 90, spend: 45_000, inflation: 0.025, downturn: 0.3, recoveryYears: 5 };
+		const withRetireAge = project(assets, { startAge: 67, retireAge: 67, ...common }, 'average');
+		const without = project(assets, { startAge: 67, ...common }, 'average');
+		expect(withRetireAge).toEqual(without); // retireAge defaults to startAge → identical
+	});
+});
+
+describe('project — the super-only hand-calc reconciles every year (calc panel fidelity)', () => {
+	// Mirrors what the Calculations panel shows: for a super-only, retired, no-tax,
+	// no-income, no-pension plan, closing = (opening − spend) × (1 + real return)
+	// must land on the engine's next-year balance for EVERY year and both scenarios.
+	const rand = rng(17);
+	it('closing = (opening − spend) × (1 + growth) matches the engine across 1000 plans', () => {
+		for (let i = 0; i < 1000; i++) {
+			const startAge = 60 + Math.floor(rand() * 8);
+			const endAge = startAge + 10 + Math.floor(rand() * 30);
+			const R = 0.03 + rand() * 0.06;
+			const I = rand() * 0.035;
+			const downturn = rand() * 0.5;
+			const recoveryYears = 1 + Math.floor(rand() * 8);
+			const a: Assumptions = {
+				startAge,
+				endAge,
+				spend: Math.round(20_000 + rand() * 45_000),
+				inflation: I,
+				downturn,
+				recoveryYears
+			};
+			const gNormal = realReturn(R, I);
+			const recovery = Math.pow(1 / (1 - downturn), 1 / recoveryYears) - 1;
+			for (const scenario of ['average', 'bad'] as const) {
+				const p = project([new Super(600_000, R)], a, scenario);
+				for (let k = 0; k < p.points.length - 1; k++) {
+					const pt = p.points[k];
+					if (pt.balance <= 0) continue;
+					const t = pt.age - startAge; // retireAge === startAge here
+					let g = gNormal;
+					if (scenario === 'bad') {
+						if (t === 0) g = -downturn;
+						else if (t <= recoveryYears) g = recovery;
+					}
+					const closing = (pt.balance - a.spend) * (1 + g);
+					const engineNext = p.points[k + 1].balance;
+					if (closing <= 0) continue; // run-out year: engine clamps to 0
+					expect(near(closing, engineNext, 1e-9)).toBe(true);
+				}
+			}
+		}
+	});
+});
