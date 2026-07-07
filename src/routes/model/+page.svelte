@@ -41,8 +41,8 @@
 				<ProjectionChart />
 				<p class="chart-note">
 					<strong>All figures are in today's dollars.</strong> Spending, income and balances keep pace
-					with inflation automatically, so amounts stay comparable to what money is worth now.
-					Illustrative only — real returns, tax and future spending will differ.
+					with inflation automatically, so amounts stay comparable to what money is worth now. Illustrative
+					only — real returns, tax and future spending will differ.
 				</p>
 			</div>
 		</div>
@@ -90,6 +90,42 @@
 								/>
 							</div>
 							<input id="planto" type="number" min="70" max="110" bind:value={plan.planToAge} />
+						</div>
+					</div>
+				{/if}
+			</section>
+
+			<!-- SUPERANNUATION -->
+			<section class="acc">
+				<button class="acc-head" aria-expanded={open.sup} onclick={() => (open.sup = !open.sup)}>
+					<span>Superannuation</span>
+					<span class="acc-chev" class:open={open.sup}>›</span>
+				</button>
+				{#if open.sup}
+					<div class="acc-body">
+						<div class="field">
+							<div class="field-head">
+								<label for="super">Super balance ($)</label>
+								<Help
+									text="Your superannuation balance today — the main pot most people draw on in retirement. Cash savings (which earn a different rate) can be added separately later."
+								/>
+							</div>
+							<MoneyInput id="super" bind:value={plan.superBalance} />
+						</div>
+						<div class="field">
+							<div class="field-head">
+								<label for="ret">Super return (% p.a.)</label>
+								<Help
+									text="The long-run average return on your super, before inflation. Default 7% is a typical long-term figure for a growth/balanced option; conservative options earn less, so lower it if your super is in a defensive setting."
+								/>
+							</div>
+							<input
+								id="ret"
+								type="number"
+								step="0.1"
+								value={pct(plan.superReturn)}
+								oninput={(e) => (plan.superReturn = (Number(e.currentTarget.value) || 0) / 100)}
+							/>
 						</div>
 					</div>
 				{/if}
@@ -170,42 +206,6 @@
 							In today's dollars — enter what this costs now, and it keeps pace with inflation
 							automatically. Assumes you own your home (no rent or mortgage).
 						</p>
-					</div>
-				{/if}
-			</section>
-
-			<!-- SUPERANNUATION -->
-			<section class="acc">
-				<button class="acc-head" aria-expanded={open.sup} onclick={() => (open.sup = !open.sup)}>
-					<span>Superannuation</span>
-					<span class="acc-chev" class:open={open.sup}>›</span>
-				</button>
-				{#if open.sup}
-					<div class="acc-body">
-						<div class="field">
-							<div class="field-head">
-								<label for="super">Super balance ($)</label>
-								<Help
-									text="Your superannuation balance today — the main pot most people draw on in retirement. Cash savings (which earn a different rate) can be added separately later."
-								/>
-							</div>
-							<MoneyInput id="super" bind:value={plan.superBalance} />
-						</div>
-						<div class="field">
-							<div class="field-head">
-								<label for="ret">Super return (% p.a.)</label>
-								<Help
-									text="The long-run average return on your super, before inflation. Default 7% is a typical long-term figure for a growth/balanced option; conservative options earn less, so lower it if your super is in a defensive setting."
-								/>
-							</div>
-							<input
-								id="ret"
-								type="number"
-								step="0.1"
-								value={pct(plan.superReturn)}
-								oninput={(e) => (plan.superReturn = (Number(e.currentTarget.value) || 0) / 100)}
-							/>
-						</div>
 					</div>
 				{/if}
 			</section>
