@@ -2,7 +2,14 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { plan } from '$lib/state/plan.svelte';
+	import { dev } from '$app/environment';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
+	import { feedbackMailto } from '$lib/config';
+	import { trackEvent } from '$lib/analytics';
 	import { onMount } from 'svelte';
+
+	// Page views. `development` mode keeps local traffic out of production numbers.
+	injectAnalytics({ mode: dev ? 'development' : 'production' });
 
 	let { children } = $props();
 
@@ -33,6 +40,9 @@
 <footer class="disclaimer">
 	<div class="foot-links">
 		<a href="/assumptions">How it works & assumptions</a>
+		<a href={feedbackMailto} onclick={() => trackEvent('feedback_clicked', { where: 'footer' })}
+			>Feedback</a
+		>
 		<a href="/terms">Terms of Service</a>
 		<a href="/privacy">Privacy Policy</a>
 	</div>

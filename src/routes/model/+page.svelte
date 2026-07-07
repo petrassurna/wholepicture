@@ -6,6 +6,7 @@
 	import H1 from '$lib/components/H1.svelte';
 	import { plan, FREQ, FREQ_OPTIONS } from '$lib/state/plan.svelte';
 	import { CURRENT_PENSION } from '$lib/domain/pension';
+	import { trackEngaged, trackEvent } from '$lib/analytics';
 
 	// Independent collapsible sections — scales to any number of categories.
 	let open = $state({
@@ -52,7 +53,8 @@
 		</div>
 
 		<!-- Inputs: collapsible sections -->
-		<div class="model-inputs">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="model-inputs" oninput={trackEngaged} onchange={trackEngaged}>
 			<!-- YOU -->
 			<section class="acc">
 				<button class="acc-head" aria-expanded={open.you} onclick={() => (open.you = !open.you)}>
@@ -289,8 +291,13 @@
 								</div>
 							</div>
 						{/each}
-						<button type="button" class="add-btn" onclick={() => plan.addBankAccount()}
-							>+ Add account</button
+						<button
+								type="button"
+								class="add-btn"
+								onclick={() => {
+									plan.addBankAccount();
+									trackEvent('added_bank');
+								}}>+ Add account</button
 						>
 					</div>
 				{/if}
@@ -399,8 +406,13 @@
 								</div>
 							</div>
 						{/each}
-						<button type="button" class="add-btn" onclick={() => plan.addIncome()}
-							>+ Add income</button
+						<button
+							type="button"
+							class="add-btn"
+							onclick={() => {
+								plan.addIncome();
+								trackEvent('added_income');
+							}}>+ Add income</button
 						>
 					</div>
 				{/if}

@@ -2,6 +2,7 @@
 	import { project, realReturn } from '$lib/domain/projection';
 	import { CURRENT_PENSION } from '$lib/domain/pension';
 	import { plan } from '$lib/state/plan.svelte';
+	import { trackEvent } from '$lib/analytics';
 
 	const pensionAsAt = CURRENT_PENSION.asAt;
 
@@ -149,7 +150,11 @@
 
 <div class="calc-box">
 	<label class="check calc-toggle">
-		<input type="checkbox" bind:checked={show} />
+		<input
+			type="checkbox"
+			bind:checked={show}
+			onchange={() => show && trackEvent('opened_calculations')}
+		/>
 		<span>Show calculations</span>
 	</label>
 
