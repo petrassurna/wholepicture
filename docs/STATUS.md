@@ -54,6 +54,8 @@ A working, chart-first retirement drawdown model — a focused slice of the visi
 - The bad-case **crash hits the whole portfolio**, including bank/TDs — unrealistic for cash; a term deposit doesn't crash.
 - **Tax constants are 2024-25**; FY2026-27 has legislated bracket cuts not yet entered.
 - **Money is a raw `number`** — no `Money`/`Percent`/`Age` value objects yet (the vision/MVP called for integer-cents `Money`).
+- **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items *are* treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation (big complexity for a projection tool); a single "spend grows above inflation" knob is the cheap future option if wanted.
+- **No Age Pension.** A large, inflation-linked income stream (indexed to the higher of CPI/wages) that kicks in as assets deplete — its absence makes longevity **pessimistic**, partly offsetting the inflation point above. Scope decision; see the vision doc.
 
 ---
 
@@ -61,6 +63,12 @@ A working, chart-first retirement drawdown model — a focused slice of the visi
 
 Prioritised, with the reasoning behind the order:
 
+0. **Age Pension (highest-value feature).** The biggest realism gap for the $300k–$5M user. It's a means-tested, tax-free, inflation-indexed income stream that *rises as assets fall* — a stabiliser that turns a hard "run-out" cliff into a glide onto a part-then-full pension. Design (fits the existing seams with no engine surgery):
+   - New `pension.ts` policy: `agePension(financialAssets, otherIncome, filing, homeowner, scale)` → tax-free annual $, from an indexed constants table (assets-test thresholds/taper, income-test free area + deeming, max rates). Owned/called via `Household` (it already knows single/couple).
+   - Injected into the projection as a per-year callback (like `taxOn`): each year compute the pension from that year's **opening** financial assets, add it as tax-free gross income offsetting spend. Recomputed yearly because the balance changes.
+   - Composes with what exists: indexed → flat real (fits today's-dollars frame); tax-free (bypasses the tax engine); assesses super + bank (home exempt — already assumed homeowner).
+   - **v1 scope:** assets-test only (it almost always binds for asset-rich retirees), homeowner, single/couple. Later: income test + deeming, non-homeowner thresholds + rent assistance.
+   - **UI:** an "Include Age Pension" toggle (on = realistic; off = self-funded-only view). The "run-out age" framing softens to "your own money lasts to ~X, then the pension carries you."
 1. **Fix the `Asset` doc comment.** It promises "add property/shares without touching the engine," which isn't true (see #4). Cheap honesty fix.
 2. **Update the tax scale to the current year** (`TAX_2026_27`, the 16%→15% cut) — five-minute data add when wanted.
 3. **`Money` value object — when the domain stabilises.** Foundational and mechanical (touches everything), so it only gets more expensive; but for an illustrative tool the float-drift risk is low, so not urgent. Do it before numbers drive real advice or hit a DB.
