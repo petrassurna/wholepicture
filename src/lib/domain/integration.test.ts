@@ -1,68 +1,92 @@
 import { describe, it, expect } from 'vitest';
-import { Super, BankAccount, poolOf } from './assets';
-import { project, type Assumptions } from './projection';
+import { Super, BankAccount, type Asset } from './assets';
+import { Household } from './household';
+import { IncomeSource } from './income';
+import { project, type Assumptions, type Projection } from './projection';
 
-// End-to-end: assets → pool (with tax) → projection. Verifies the pieces
-// compose correctly, and specifically that tax on bank interest shortens how
-// long the money lasts. Regression ages (83 / 82) were reproduced independently.
+// End-to-end: assets + household → projection. Verifies the pieces compose —
+// taxable assets/income are taxed, super is not, and a couple's two thresholds
+// mean less tax than a single on the same income. Mostly property-based so the
+// tests survive an annual update to the tax constants.
 
-describe('tax reduces longevity end-to-end', () => {
-	const assets = [new Super(500_000, 0.07), new BankAccount('cash', 200_000, 0.04)];
-	const a: Assumptions = {
-		startAge: 67,
-		endAge: 95,
-		spend: 55_000,
-		inflation: 0.025,
-		downturn: 0.3,
-		recoveryYears: 5
-	};
+const base: Assumptions = {
+	startAge: 67,
+	endAge: 95,
+	spend: 55_000,
+	inflation: 0.025,
+	downturn: 0.3,
+	recoveryYears: 5
+};
 
-	const runsOut = (taxRate: number) => project(poolOf(assets, taxRate), a, 'average').runsOutAge;
+const run = (assets: Asset[], h: Household, over: Partial<Assumptions> = {}): Projection =>
+	project(
+		assets,
+		{
+			...base,
+			...over,
+			incomeAt: (age) => ({ gross: h.grossIncomeAt(age), taxable: h.taxableIncomeAt(age) }),
+			taxOn: (assess, age) => h.taxOn(assess, age)
+		},
+		'average'
+	);
 
-	it('a higher tax rate never makes the money last longer', () => {
-		expect(runsOut(0.3)!).toBeLessThanOrEqual(runsOut(0)!);
+const bal = (p: Projection, age: number) => p.points.find((pt) => pt.age === age)!.balance;
+const lastsPast = (p: Projection) => p.runsOutAge ?? Infinity;
+
+describe('super is tax-free', () => {
+	it('a super-only plan never pays tax, single or couple', () => {
+		const assets = [new Super(600_000, 0.07)];
+		expect(run(assets, new Household('single', [])).totalTax).toBe(0);
+		expect(run(assets, new Household('couple', [])).totalTax).toBe(0);
+	});
+});
+
+describe('taxable income is actually taxed', () => {
+	const assets = [new Super(500_000, 0.07)];
+
+	it('taxable income incurs tax and ends poorer than the same tax-free income', () => {
+		const taxable = run(assets, new Household('single', [new IncomeSource('rent', 40_000, 67, 95, true)]));
+		const free = run(assets, new Household('single', [new IncomeSource('gift', 40_000, 67, 95, false)]));
+
+		expect(taxable.totalTax).toBeGreaterThan(0);
+		expect(free.totalTax).toBe(0);
+		// Same gross income, but tax on the taxable one leaves a smaller pot.
+		expect(bal(taxable, 95)).toBeLessThan(bal(free, 95));
+	});
+});
+
+describe('bank interest is taxed once it clears the thresholds', () => {
+	it('a small term deposit stays under the tax-free point (no tax)', () => {
+		// $200k × 4.5% = $9,000 interest < the effective senior tax-free point.
+		const assets = [new Super(400_000, 0.07), new BankAccount('td', 200_000, 0.045)];
+		expect(run(assets, new Household('single', [])).totalTax).toBe(0);
 	});
 
-	it('matches the independently reproduced run-out ages (0% → 83, 30% → 82)', () => {
-		expect(runsOut(0)).toBe(83);
-		expect(runsOut(0.3)).toBe(82);
+	it('a large term deposit generates taxable interest', () => {
+		// $900k × 4.5% = $40,500 interest → clearly past SAPTO's cut-out.
+		const assets = [new Super(400_000, 0.07), new BankAccount('td', 900_000, 0.045)];
+		expect(run(assets, new Household('single', [])).totalTax).toBeGreaterThan(0);
 	});
+});
 
-	it('does not change a super-only plan (super is tax-free)', () => {
-		const superOnly = [new Super(500_000, 0.07)];
-		const noTax = project(poolOf(superOnly, 0), a, 'average').runsOutAge;
-		const withTax = project(poolOf(superOnly, 0.3), a, 'average').runsOutAge;
-		expect(withTax).toBe(noTax);
+describe('a couple pays less than a single on the same income', () => {
+	it('splitting $60k of rent across two thresholds cuts the tax', () => {
+		const assets = [new Super(600_000, 0.07)];
+		const incomes = [new IncomeSource('rent', 60_000, 67, 95, true, 'joint')];
+		const single = run(assets, new Household('single', incomes));
+		const couple = run(assets, new Household('couple', incomes));
+
+		expect(single.totalTax).toBeGreaterThan(0);
+		expect(couple.totalTax).toBeLessThan(single.totalTax);
 	});
 });
 
 describe('income extends longevity end-to-end', () => {
-	const pot = { balance: 500_000, nominalReturn: 0.07 };
-	const base: Assumptions = {
-		startAge: 67,
-		endAge: 95,
-		spend: 55_000,
-		inflation: 0.025,
-		downturn: 0.3,
-		recoveryYears: 5
-	};
-	const bal = (proj: { points: { age: number; balance: number }[] }, age: number) =>
-		proj.points.find((pt) => pt.age === age)!.balance;
+	const assets = [new Super(500_000, 0.07)];
 
 	it('early-retirement income makes the money last longer', () => {
-		const without = project(pot, base, 'average').runsOutAge!;
-		const withInc = project(
-			pot,
-			{ ...base, incomeAt: (age) => (age <= 71 ? 25_500 : 0) },
-			'average'
-		).runsOutAge!;
-		expect(withInc).toBeGreaterThan(without);
-	});
-
-	it('income above spending grows the pot in those years', () => {
-		// $80k income vs $55k spend for the first 3 years → surplus is invested.
-		const withSurplus = project(pot, { ...base, incomeAt: (age) => (age <= 69 ? 80_000 : 0) }, 'average');
-		const flat = project(pot, base, 'average');
-		expect(bal(withSurplus, 70)).toBeGreaterThan(bal(flat, 70));
+		const none = run(assets, new Household('single', []));
+		const withInc = run(assets, new Household('single', [new IncomeSource('work', 25_000, 67, 71, true)]));
+		expect(lastsPast(withInc)).toBeGreaterThan(lastsPast(none));
 	});
 });
