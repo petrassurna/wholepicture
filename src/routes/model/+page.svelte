@@ -41,9 +41,9 @@
 			<div class="chart-card">
 				<ProjectionChart />
 				<p class="chart-note">
-					<strong>All figures are in today's dollars.</strong> Spending, income and balances keep pace
-					with inflation automatically, so amounts stay comparable to what money is worth now. Illustrative
-					only — real returns, tax and future spending will differ.
+					In today's dollars <Help
+						text="Every figure is shown in today's money — what it's worth to you now, not an inflated future amount. Spending stays flat because it's already in today's dollars, and returns are shown after inflation: 7% growth with 2.5% inflation appears as about 4.4%. So a $52,200 budget buys the same lifestyle each year even as prices rise."
+					/> · illustrative only; actual returns, tax and future spending will differ.
 				</p>
 			</div>
 			<Calculations />
@@ -221,8 +221,7 @@
 							+ Add item
 						</button>
 						<p class="field-note">
-							In today's dollars — enter what this costs now, and it keeps pace with inflation
-							automatically. Assumes you own your home (no rent or mortgage).
+							In today's dollars. Assumes you own your home (no rent or mortgage).
 						</p>
 					</div>
 				{/if}
