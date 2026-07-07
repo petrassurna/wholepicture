@@ -868,6 +868,10 @@ h2 {
 	visibility: visible;
 	opacity: 1;
 }
+/* Raise the badge when it sits inline in a note (flex labels ignore this). */
+.field-note .help {
+	vertical-align: 3px;
+}
 .model .field {
 	margin-bottom: 0;
 }

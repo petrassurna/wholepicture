@@ -50,7 +50,8 @@
 	});
 
 	const x = (age: number) => 44 + ((age - plan.retireAge) / (plan.planToAge - plan.retireAge)) * 340;
-	const y = (b: number) => 188 - (b / balAxisMax) * 148;
+	// Plot spans y 56 (top) → 188 (bottom); the 56 start leaves ~20px under the legend.
+	const y = (b: number) => 188 - (b / balAxisMax) * 132;
 
 	const axisTicks = $derived.by(() => {
 		const span = plan.planToAge - plan.retireAge;
@@ -293,10 +294,10 @@
 			{@const hx = x(hAvg.age)}
 			{@const flip = hx > 200}
 			<g pointer-events="none">
-				<line x1={hx} y1="40" x2={hx} y2="188" stroke="#cbd3dd" stroke-width="1" stroke-dasharray="3 3" />
+				<line x1={hx} y1="56" x2={hx} y2="188" stroke="#cbd3dd" stroke-width="1" stroke-dasharray="3 3" />
 				<circle cx={hx} cy={y(hAvg.balance)} r="3.4" fill="#0f2540" />
 				<circle cx={hx} cy={y(hBad.balance)} r="3.4" fill="#d9534f" />
-				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 44)`}>
+				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 60)`}>
 					<rect width="146" height="58" rx="6" fill="#0f2540" opacity="0.96" />
 					<text x="10" y="18" font-size="12" font-weight="700" fill="#fff">Age {hAvg.age}</text>
 					<circle cx="13" cy="33" r="3" fill="#8fa6c4" />
