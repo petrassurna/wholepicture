@@ -61,7 +61,31 @@
 		<ul>
 			<li>If you are still working, contributions are modelled as a percentage of salary — the employer contribution (SG) plus any salary sacrifice — less the 15% contributions tax.</li>
 			<li>Super fund earnings during the working (accumulation) years are taxed at 15%.</li>
-			<li>The minimum super drawdown rule and the concessional contributions cap are not enforced.</li>
+			<li>The concessional contributions cap is not enforced.</li>
+		</ul>
+
+		<H2 text="Drawing down your super — an important limitation" />
+		<p>
+			By law you must withdraw a minimum amount from an account-based pension each year — around 5% of
+			the balance at ages 65–74, rising with age (up to 14% from 95). It's a floor, not a limit: you can
+			always take more.
+		</p>
+		<ul>
+			<li>
+				<strong>The minimum may be more than you spend.</strong> If your budget is below the required minimum,
+				the law still forces you to withdraw the difference — though you can simply save or reinvest that
+				surplus outside super.
+			</li>
+			<li>
+				<strong>This tool does not enforce the minimum.</strong> It withdraws only what your budget needs
+				and leaves the rest growing inside super. So the figures can differ from real life — especially for
+				a <em>large balance with modest spending</em> — because in reality the forced-out money would sit
+				in a taxable account (earning taxable interest) rather than tax-free inside super.
+			</li>
+			<li>
+				The effect is a small tax difference that nudges your <em>final</em> balance, not whether the money
+				lasts. But it does mean these figures are an estimate, and there may be differences here.
+			</li>
 		</ul>
 
 		<H2 text="Investment returns and the bad case" />
@@ -75,7 +99,7 @@
 		<ul>
 			<li>Property, shares, and assets beyond super and cash.</li>
 			<li>The Age Pension income test and deeming; non-homeowner rules.</li>
-			<li>Minimum super drawdown rules and super death-benefits tax.</li>
+			<li>The minimum super drawdown rule (see above) and super death-benefits tax.</li>
 			<li>Aged care, life events, and changes in your circumstances over time.</li>
 		</ul>
 
