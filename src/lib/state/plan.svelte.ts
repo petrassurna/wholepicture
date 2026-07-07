@@ -9,9 +9,32 @@ import { Household } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
 type BankInput = { name: string; amount: number; rate: number };
-type IncomeInput = { label: string; amount: number; fromAge: number; toAge: number };
-// A spending line item: amount × quantity = yearly cost.
-type SpendItem = { name: string; amount: number; quantity: number };
+type IncomeInput = {
+	label: string;
+	amount: number;
+	fromAge: number;
+	toAge: number;
+	indexed: boolean;
+};
+
+// How often a spending amount recurs, and how many times a year that is.
+export type Freq = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+export const FREQ: Record<Freq, number> = {
+	weekly: 52,
+	fortnightly: 26,
+	monthly: 12,
+	quarterly: 4,
+	yearly: 1
+};
+export const FREQ_OPTIONS: { value: Freq; label: string }[] = [
+	{ value: 'weekly', label: 'Weekly' },
+	{ value: 'fortnightly', label: 'Fortnightly' },
+	{ value: 'monthly', label: 'Monthly' },
+	{ value: 'quarterly', label: 'Quarterly' },
+	{ value: 'yearly', label: 'Yearly' }
+];
+// A spending line item: amount recurring at `freq` → yearly cost.
+type SpendItem = { name: string; amount: number; freq: Freq };
 
 const STORAGE_KEY = 'wholepicture.plan.v1';
 
@@ -30,48 +53,48 @@ function defaultSpendItems(filing: Filing): SpendItem[] {
 	if (filing === 'single') {
 		// ≈ ASFA "comfortable" single, $52,200/yr (homeowner). Largest first.
 		return [
-			{ name: 'Food', amount: 730, quantity: 12 }, // 8,760
-			{ name: 'Holidays', amount: 7000, quantity: 1 }, // 7,000
-			{ name: 'Car', amount: 6000, quantity: 1 }, // 6,000
-			{ name: 'Entertainment', amount: 95, quantity: 52 }, // 4,940
-			{ name: 'Medical/dentist', amount: 3500, quantity: 1 }, // 3,500
-			{ name: 'Rates', amount: 797, quantity: 4 }, // 3,188
-			{ name: 'Private health insurance', amount: 250, quantity: 12 }, // 3,000
-			{ name: 'Home repairs', amount: 2800, quantity: 1 }, // 2,800
-			{ name: 'Household goods', amount: 1972, quantity: 1 }, // 1,972 (balances to $52,200)
-			{ name: 'Clothes & personal care', amount: 1800, quantity: 1 }, // 1,800
-			{ name: 'Home insurance', amount: 1700, quantity: 1 }, // 1,700
-			{ name: 'Gifts & donations', amount: 1500, quantity: 1 }, // 1,500
-			{ name: 'Water', amount: 350, quantity: 4 }, // 1,400
-			{ name: 'Electricity', amount: 350, quantity: 4 }, // 1,400
-			{ name: 'Gas', amount: 300, quantity: 4 }, // 1,200
-			{ name: 'Internet', amount: 95, quantity: 12 }, // 1,140
-			{ name: 'Transport', amount: 500, quantity: 1 }, // 500
-			{ name: 'Mobile', amount: 300, quantity: 1 }, // 300
-			{ name: 'Glasses', amount: 100, quantity: 1 } // 100
+			{ name: 'Food', amount: 730, freq: 'monthly' }, // 8,760
+			{ name: 'Holidays', amount: 7000, freq: 'yearly' }, // 7,000
+			{ name: 'Car', amount: 6000, freq: 'yearly' }, // 6,000
+			{ name: 'Entertainment', amount: 95, freq: 'weekly' }, // 4,940
+			{ name: 'Medical/dentist', amount: 3500, freq: 'yearly' }, // 3,500
+			{ name: 'Rates', amount: 797, freq: 'quarterly' }, // 3,188
+			{ name: 'Private health insurance', amount: 250, freq: 'monthly' }, // 3,000
+			{ name: 'Home repairs', amount: 2800, freq: 'yearly' }, // 2,800
+			{ name: 'Household goods', amount: 1972, freq: 'yearly' }, // 1,972 (balances to $52,200)
+			{ name: 'Clothes & personal care', amount: 1800, freq: 'yearly' }, // 1,800
+			{ name: 'Home insurance', amount: 1700, freq: 'yearly' }, // 1,700
+			{ name: 'Gifts & donations', amount: 1500, freq: 'yearly' }, // 1,500
+			{ name: 'Water', amount: 350, freq: 'quarterly' }, // 1,400
+			{ name: 'Electricity', amount: 350, freq: 'quarterly' }, // 1,400
+			{ name: 'Gas', amount: 300, freq: 'quarterly' }, // 1,200
+			{ name: 'Internet', amount: 95, freq: 'monthly' }, // 1,140
+			{ name: 'Transport', amount: 500, freq: 'yearly' }, // 500
+			{ name: 'Mobile', amount: 300, freq: 'yearly' }, // 300
+			{ name: 'Glasses', amount: 100, freq: 'yearly' } // 100
 		];
 	}
 	// ≈ ASFA "comfortable" couple, $73,500/yr (homeowners). Largest first.
 	return [
-		{ name: 'Food', amount: 1300, quantity: 12 }, // 15,600
-		{ name: 'Holidays', amount: 10000, quantity: 1 }, // 10,000
-		{ name: 'Entertainment', amount: 135, quantity: 52 }, // 7,020
-		{ name: 'Car', amount: 7000, quantity: 1 }, // 7,000
-		{ name: 'Medical/dentist', amount: 5000, quantity: 1 }, // 5,000
-		{ name: 'Private health insurance', amount: 400, quantity: 12 }, // 4,800
-		{ name: 'Home repairs', amount: 3500, quantity: 1 }, // 3,500
-		{ name: 'Rates', amount: 797, quantity: 4 }, // 3,188
-		{ name: 'Household goods', amount: 2972, quantity: 1 }, // 2,972 (balances to $73,500)
-		{ name: 'Clothes & personal care', amount: 2800, quantity: 1 }, // 2,800
-		{ name: 'Gifts & donations', amount: 2500, quantity: 1 }, // 2,500
-		{ name: 'Home insurance', amount: 1700, quantity: 1 }, // 1,700
-		{ name: 'Water', amount: 420, quantity: 4 }, // 1,680
-		{ name: 'Electricity', amount: 400, quantity: 4 }, // 1,600
-		{ name: 'Gas', amount: 400, quantity: 4 }, // 1,600
-		{ name: 'Internet', amount: 95, quantity: 12 }, // 1,140
-		{ name: 'Mobile', amount: 300, quantity: 2 }, // 600
-		{ name: 'Transport', amount: 600, quantity: 1 }, // 600
-		{ name: 'Glasses', amount: 100, quantity: 2 } // 200
+		{ name: 'Food', amount: 1300, freq: 'monthly' }, // 15,600
+		{ name: 'Holidays', amount: 10000, freq: 'yearly' }, // 10,000
+		{ name: 'Entertainment', amount: 135, freq: 'weekly' }, // 7,020
+		{ name: 'Car', amount: 7000, freq: 'yearly' }, // 7,000
+		{ name: 'Medical/dentist', amount: 5000, freq: 'yearly' }, // 5,000
+		{ name: 'Private health insurance', amount: 400, freq: 'monthly' }, // 4,800
+		{ name: 'Home repairs', amount: 3500, freq: 'yearly' }, // 3,500
+		{ name: 'Rates', amount: 797, freq: 'quarterly' }, // 3,188
+		{ name: 'Household goods', amount: 2972, freq: 'yearly' }, // 2,972 (balances to $73,500)
+		{ name: 'Clothes & personal care', amount: 2800, freq: 'yearly' }, // 2,800
+		{ name: 'Gifts & donations', amount: 2500, freq: 'yearly' }, // 2,500
+		{ name: 'Home insurance', amount: 1700, freq: 'yearly' }, // 1,700
+		{ name: 'Water', amount: 420, freq: 'quarterly' }, // 1,680
+		{ name: 'Electricity', amount: 400, freq: 'quarterly' }, // 1,600
+		{ name: 'Gas', amount: 400, freq: 'quarterly' }, // 1,600
+		{ name: 'Internet', amount: 95, freq: 'monthly' }, // 1,140
+		{ name: 'Mobile', amount: 50, freq: 'monthly' }, // 600
+		{ name: 'Transport', amount: 600, freq: 'yearly' }, // 600
+		{ name: 'Glasses', amount: 200, freq: 'yearly' } // 200
 	];
 }
 
@@ -122,13 +145,18 @@ class Plan {
 
 	get incomes(): IncomeSource[] {
 		return this.incomeSources.map(
-			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true)
+			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true, s.indexed ?? true)
 		);
 	}
 
 	/** The taxpayer(s): filing status + income sources. */
 	get taxUnit(): Household {
 		return new Household(this.household, this.incomes);
+	}
+
+	/** Real-terms context so non-indexed income erodes by inflation over the plan. */
+	get realCtx() {
+		return { startAge: this.retireAge, inflation: this.inflation };
 	}
 
 	get totalBalance(): number {
@@ -138,7 +166,7 @@ class Plan {
 	/** Effective yearly spend: the itemised total when broken down, else the simple figure. */
 	get spend(): number {
 		return this.spendItems.length
-			? this.spendItems.reduce((sum, it) => sum + it.amount * it.quantity, 0)
+			? this.spendItems.reduce((sum, it) => sum + it.amount * FREQ[it.freq], 0)
 			: this.spendPerYear;
 	}
 
@@ -158,12 +186,13 @@ class Plan {
 	/** Gross income (offsets spending) and its taxable portion, at an age. */
 	incomeAt(age: number): { gross: number; taxable: number } {
 		const h = this.taxUnit;
-		return { gross: h.grossIncomeAt(age), taxable: h.taxableIncomeAt(age) };
+		const ctx = this.realCtx;
+		return { gross: h.grossIncomeAt(age, ctx), taxable: h.taxableIncomeAt(age, ctx) };
 	}
 
 	/** Tax on the year's assessable income given investment income from taxable assets. */
 	taxOn(assetAssessable: number, age: number): number {
-		return this.taxUnit.taxOn(assetAssessable, age);
+		return this.taxUnit.taxOn(assetAssessable, age, this.realCtx);
 	}
 
 	// Super slider ceiling depends on household (a couple's combined pot is bigger).
@@ -200,7 +229,8 @@ class Plan {
 			label: '',
 			amount: 0,
 			fromAge: this.retireAge,
-			toAge: this.retireAge + 5
+			toAge: this.retireAge + 5,
+			indexed: true
 		});
 	}
 
@@ -209,7 +239,7 @@ class Plan {
 	}
 
 	addSpendItem() {
-		this.spendItems.push({ name: '', amount: 0, quantity: 1 });
+		this.spendItems.push({ name: '', amount: 0, freq: 'monthly' });
 	}
 
 	removeSpendItem(i: number) {
@@ -256,20 +286,34 @@ class Plan {
 							label: String(s.label ?? ''),
 							amount: s.amount,
 							fromAge: s.fromAge,
-							toAge: s.toAge
+							toAge: s.toAge,
+							indexed: typeof s.indexed === 'boolean' ? s.indexed : true
 						}));
 				}
 				if (Array.isArray(d.spendItems)) {
+					// Accept new {freq} items; migrate legacy {quantity} items — map a
+					// standard quantity to its frequency, else fold it into a yearly amount.
+					const qtyToFreq: Record<number, Freq> = {
+						52: 'weekly',
+						26: 'fortnightly',
+						12: 'monthly',
+						4: 'quarterly',
+						1: 'yearly'
+					};
 					this.spendItems = d.spendItems
-						.filter(
-							(it: SpendItem) =>
-								it && typeof it.amount === 'number' && typeof it.quantity === 'number'
-						)
-						.map((it: SpendItem) => ({
-							name: String(it.name ?? ''),
-							amount: it.amount,
-							quantity: it.quantity
-						}));
+						.filter((it: { amount?: unknown }) => it && typeof it.amount === 'number')
+						.map((it: { name?: unknown; amount: number; freq?: unknown; quantity?: unknown }) => {
+							let freq: Freq = 'monthly';
+							if (typeof it.freq === 'string' && it.freq in FREQ) freq = it.freq as Freq;
+							else if (typeof it.quantity === 'number') freq = qtyToFreq[it.quantity] ?? 'yearly';
+							const amount =
+								typeof it.freq !== 'string' &&
+								typeof it.quantity === 'number' &&
+								!(it.quantity in qtyToFreq)
+									? it.amount * it.quantity // non-standard quantity → annualise
+									: it.amount;
+							return { name: String(it.name ?? ''), amount, freq };
+						});
 				}
 			}
 		} catch {

@@ -292,6 +292,10 @@ a {
 	line-height: 1.45;
 	margin: 7px 0 0;
 }
+.chart-card .chart-note strong {
+	color: var(--navy);
+	font-weight: 600;
+}
 
 /* Trust strip */
 .trust {
@@ -881,6 +885,24 @@ h2 {
 	margin: 4px 0 0;
 	line-height: 1.5;
 }
+.check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	color: var(--ink);
+	cursor: pointer;
+}
+.check input[type='checkbox'] {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--navy);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.check span {
+	margin-right: auto;
+}
 
 /* Bank accounts */
 .bank-acct {
@@ -959,7 +981,7 @@ h2 {
 .spend-head,
 .spend-row {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 72px 52px 66px 20px;
+	grid-template-columns: minmax(0, 1fr) 64px 92px 64px 20px;
 	gap: 5px;
 	align-items: center;
 }
@@ -1004,8 +1026,7 @@ h2 {
 	outline: none;
 	border-color: var(--navy);
 }
-.spend-amt,
-.spend-qty {
+.spend-amt {
 	text-align: right;
 }
 .spend-line {

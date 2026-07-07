@@ -25,6 +25,46 @@ describe('IncomeSource', () => {
 		expect(taxFree.grossAt(67)).toBe(20_000);
 		expect(taxFree.taxableAt(67)).toBe(0);
 	});
+
+	it('defaults to indexed (flat real value) — a context makes no difference', () => {
+		const ctx = { startAge: 67, inflation: 0.03 };
+		expect(work.indexed).toBe(true);
+		expect(work.grossAt(67, ctx)).toBe(20_000);
+		expect(work.grossAt(72, ctx)).toBe(20_000); // unchanged in real terms
+	});
+});
+
+describe('IncomeSource — inflation indexation (today’s dollars)', () => {
+	const ctx = { startAge: 67, inflation: 0.025 };
+	const level = new IncomeSource('annuity', 30_000, 67, 90, true, false); // NOT indexed
+
+	it('a non-indexed income keeps full value in year 0', () => {
+		expect(level.grossAt(67, ctx)).toBeCloseTo(30_000, 6);
+	});
+
+	it('a non-indexed income erodes by inflation each year (hand-calc)', () => {
+		// year 3: 30,000 / 1.025^3 = 30,000 / 1.076890625 = 27,857.61…
+		expect(level.grossAt(70, ctx)).toBeCloseTo(30_000 / Math.pow(1.025, 3), 4);
+		// year 10: 30,000 / 1.025^10
+		expect(level.grossAt(77, ctx)).toBeCloseTo(30_000 / Math.pow(1.025, 10), 4);
+	});
+
+	it('erosion applies to the taxable amount too', () => {
+		expect(level.taxableAt(70, ctx)).toBeCloseTo(30_000 / Math.pow(1.025, 3), 4);
+	});
+
+	it('with zero inflation a non-indexed income is flat', () => {
+		expect(level.grossAt(80, { startAge: 67, inflation: 0 })).toBe(30_000);
+	});
+
+	it('without a context, a non-indexed income is treated as flat', () => {
+		expect(level.grossAt(80)).toBe(30_000);
+	});
+
+	it('an indexed income never erodes', () => {
+		const indexed = new IncomeSource('rent', 30_000, 67, 90, true, true);
+		expect(indexed.grossAt(77, ctx)).toBe(30_000);
+	});
 });
 
 describe('grossIncomeAt / taxableIncomeAt', () => {

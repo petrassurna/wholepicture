@@ -3,7 +3,7 @@
 	import Help from '$lib/components/Help.svelte';
 	import MoneyInput from '$lib/components/MoneyInput.svelte';
 	import H1 from '$lib/components/H1.svelte';
-	import { plan } from '$lib/state/plan.svelte';
+	import { plan, FREQ, FREQ_OPTIONS } from '$lib/state/plan.svelte';
 
 	// Independent collapsible sections — scales to any number of categories.
 	let open = $state({
@@ -40,8 +40,9 @@
 			<div class="chart-card">
 				<ProjectionChart />
 				<p class="chart-note">
-					Illustrative projections only. Actual investment returns, inflation, tax, fees and future
-					spending will differ.
+					<strong>All figures are in today's dollars.</strong> Spending, income and balances keep pace
+					with inflation automatically, so amounts stay comparable to what money is worth now.
+					Illustrative only — real returns, tax and future spending will differ.
 				</p>
 			</div>
 		</div>
@@ -122,8 +123,8 @@
 								<div class="spend-head">
 									<span class="spend-col-name">Item</span>
 									<span>Amount</span>
-									<span>×</span>
-									<span class="spend-col-total">Total</span>
+									<span>Every</span>
+									<span class="spend-col-total">Yearly</span>
 									<span></span>
 								</div>
 								{#each plan.spendItems as item, i (item)}
@@ -142,14 +143,12 @@
 											aria-label="Amount"
 											bind:value={item.amount}
 										/>
-										<input
-											class="spend-qty"
-											type="number"
-											min="0"
-											aria-label="Times per year"
-											bind:value={item.quantity}
-										/>
-										<span class="spend-line">{money(item.amount * item.quantity)}</span>
+										<select class="spend-freq" aria-label="How often" bind:value={item.freq}>
+											{#each FREQ_OPTIONS as opt}
+												<option value={opt.value}>{opt.label}</option>
+											{/each}
+										</select>
+										<span class="spend-line">{money(item.amount * FREQ[item.freq])}</span>
 										<button
 											type="button"
 											class="bank-remove"
@@ -167,7 +166,10 @@
 						<button type="button" class="add-btn" onclick={() => plan.addSpendItem()}>
 							+ Add item
 						</button>
-						<p class="field-note">Assumes you own your home — no rent or mortgage is included.</p>
+						<p class="field-note">
+							In today's dollars — enter what this costs now, and it keeps pace with inflation
+							automatically. Assumes you own your home (no rent or mortgage).
+						</p>
 					</div>
 				{/if}
 			</section>
@@ -217,8 +219,10 @@
 				{#if open.bank}
 					<div class="acc-body">
 						<p class="field-note">
-							Savings and term deposits are pooled with your super at their own rate. Maturity dates
-							don't change a long-term projection, so they aren't needed.
+							Savings and term deposits, each at its own rate.
+							<Help
+								text="Pooled with your super and drawn down together. Interest is taxed; your super isn't. Maturity dates don't affect a long-term projection, so they aren't needed."
+							/>
 						</p>
 						{#each plan.bankAccounts as account, i (account)}
 							<div class="bank-acct">
@@ -283,13 +287,10 @@
 						{#each plan.incomeSources as inc, i (inc)}
 							<div class="bank-acct">
 								<div class="bank-acct-top">
-									<input
-										class="bank-name"
-										type="text"
-										aria-label="Income label"
-										placeholder="e.g. Part-time work"
-										bind:value={inc.label}
-									/>
+									<div class="field" style="flex: 1">
+										<label for={`inc-amt-${i}`}>Amount ($/yr)</label>
+										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
+									</div>
 									<button
 										type="button"
 										class="bank-remove"
@@ -298,10 +299,6 @@
 									>
 								</div>
 								<div class="income-body">
-									<div class="field">
-										<label for={`inc-amt-${i}`}>Amount ($/yr)</label>
-										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
-									</div>
 									<div class="bank-fields">
 										<div class="field">
 											<label for={`inc-from-${i}`}>From age</label>
@@ -324,6 +321,22 @@
 											/>
 										</div>
 									</div>
+									<div class="field">
+										<label for={`inc-desc-${i}`}>Description (optional)</label>
+										<input
+											id={`inc-desc-${i}`}
+											type="text"
+											placeholder="e.g. Part-time work"
+											bind:value={inc.label}
+										/>
+									</div>
+									<label class="check">
+										<input type="checkbox" bind:checked={inc.indexed} />
+										<span>Increases with inflation</span>
+										<Help
+											text="Tick if this income rises with inflation (most wages and rents do) — its buying power stays the same. Untick for an amount fixed in dollars (e.g. a level annuity); its real value then shrinks each year."
+										/>
+									</label>
 								</div>
 							</div>
 						{/each}
@@ -347,10 +360,10 @@
 				{#if open.assumptions}
 					<div class="acc-body">
 						<p class="field-note">
-							Tax is worked out for you each year from your assessable income — bank interest plus
-							any taxable income like rent or part-time work — using current resident rates
-							(marginal brackets, SAPTO, LITO and the Medicare levy). Your super pension is
-							tax-free, so it's never taxed. Many retirees pay little or nothing.
+							Tax is worked out for you each year — your super pension isn't taxed.
+							<Help
+								text="Calculated from your assessable income (bank interest plus any taxable income like rent or part-time work) using current resident rates — marginal brackets, SAPTO, LITO and the Medicare levy. Super pension income is tax-free, so it's never taxed. Many retirees pay little or nothing."
+							/>
 						</p>
 						<div class="field">
 							<div class="field-head">

@@ -1,0 +1,273 @@
+import { describe, it, expect } from 'vitest';
+import { project, realReturn, type Assumptions, type Scenario } from './projection';
+import { Super, BankAccount, type Asset } from './assets';
+import { Household } from './household';
+import { IncomeSource } from './income';
+
+// Property / fuzz tests for the projection engine over thousands of random plans.
+// Three angles:
+//   1. Invariants that must hold for ANY input (non-negative balances, bounded
+//      run-out age, determinism, non-negative tax).
+//   2. Monotonicity — more spend never lasts longer, more balance never lasts
+//      shorter, the bad case never beats the average, tax never extends longevity.
+//   3. An INDEPENDENTLY written simulator (no-tax path) checked point-by-point,
+//      validating growth, pro-rata drawdown, and the crash/recovery mechanics.
+
+function rng(seed: number) {
+	return () => {
+		seed |= 0;
+		seed = (seed + 0x6d2b79f5) | 0;
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+const longevity = (p: { runsOutAge: number | null }) => p.runsOutAge ?? Infinity;
+const near = (a: number, b: number, tol = 1e-6) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+
+// A random plan: assumptions + a portfolio of tax-free super assets only (so the
+// engine's mechanics can be compared to a no-tax oracle), returned separately.
+function randomPlan(rand: () => number) {
+	const startAge = 55 + Math.floor(rand() * 15); // 55–69
+	const endAge = startAge + 3 + Math.floor(rand() * 45); // up to ~110
+	const a: Assumptions = {
+		startAge,
+		endAge,
+		spend: Math.round(rand() * 120_000),
+		inflation: rand() * 0.05,
+		downturn: rand() * 0.6,
+		recoveryYears: Math.floor(rand() * 12) // includes 0
+	};
+	const assets: Asset[] = [new Super(Math.round(rand() * 3_000_000), rand() * 0.12)];
+	if (rand() > 0.5) assets.push(new Super(Math.round(rand() * 500_000), rand() * 0.12));
+	return { a, assets };
+}
+
+// Independent simulator for the no-tax, no-income path — written from the spec,
+// structured differently from the engine (separate withdraw/grow helpers).
+function simulate(assets: Asset[], a: Assumptions, scenario: Scenario) {
+	const bal = assets.map((x) => x.balance);
+	const growth = assets.map((x) => realReturn(x.nominalReturn, a.inflation));
+	const recovery = a.recoveryYears > 0 ? Math.pow(1 / (1 - a.downturn), 1 / a.recoveryYears) - 1 : 0;
+	const points: { age: number; balance: number }[] = [];
+	let runsOutAge: number | null = null;
+
+	for (let age = a.startAge; age <= a.endAge; age++) {
+		const opening = bal.reduce((s, b) => s + Math.max(0, b), 0);
+		points.push({ age, balance: Math.max(0, opening) });
+		if (opening <= 0) {
+			runsOutAge ??= age;
+			continue;
+		}
+		// withdraw `spend` pro-rata across positive balances
+		const pos = bal.map((b) => Math.max(0, b));
+		const tot = pos.reduce((s, b) => s + b, 0);
+		if (tot <= 0) bal[0] -= a.spend;
+		else for (let i = 0; i < bal.length; i++) bal[i] -= a.spend * (pos[i] / tot);
+		if (bal.reduce((s, b) => s + b, 0) <= 0) {
+			bal.fill(0);
+			runsOutAge ??= age;
+			continue;
+		}
+		const t = age - a.startAge;
+		for (let i = 0; i < bal.length; i++) {
+			let g = growth[i];
+			if (scenario === 'bad') {
+				if (t === 0) g = -a.downturn;
+				else if (t <= a.recoveryYears) g = recovery;
+			}
+			bal[i] *= 1 + g;
+		}
+	}
+	return { points, runsOutAge };
+}
+
+describe('project — invariants over random plans', () => {
+	const rand = rng(10);
+	it('holds structure, non-negativity and bounded run-out across 3000 plans', () => {
+		for (let i = 0; i < 3000; i++) {
+			const { a, assets } = randomPlan(rand);
+			for (const scenario of ['average', 'bad'] as const) {
+				const p = project(assets, a, scenario);
+				expect(p.points.length).toBe(a.endAge - a.startAge + 1);
+				expect(p.points[0].age).toBe(a.startAge);
+				expect(p.points.at(-1)!.age).toBe(a.endAge);
+				expect(p.points.every((pt) => pt.balance >= 0)).toBe(true);
+				expect(p.points.every((pt) => pt.tax >= 0 && pt.assessableIncome >= 0)).toBe(true);
+				expect(p.totalTax).toBeGreaterThanOrEqual(0);
+				if (p.runsOutAge !== null) {
+					expect(p.runsOutAge).toBeGreaterThanOrEqual(a.startAge);
+					expect(p.runsOutAge).toBeLessThanOrEqual(a.endAge);
+					// Strictly after the run-out age the balance is pinned at 0. (At the
+					// run-out age itself the point still shows the positive opening balance
+					// — the money ran out *during* that year.)
+					const after = p.points.filter((pt) => pt.age > p.runsOutAge!);
+					expect(after.every((pt) => pt.balance === 0)).toBe(true);
+				}
+			}
+		}
+	});
+
+	it('is deterministic — identical inputs give identical output', () => {
+		const r = rng(11);
+		for (let i = 0; i < 500; i++) {
+			const { a, assets } = randomPlan(r);
+			expect(project(assets, a, 'bad')).toEqual(project(assets, a, 'bad'));
+		}
+	});
+});
+
+describe('project — matches the independent simulator (no-tax mechanics)', () => {
+	const rand = rng(12);
+	it('reproduces every point balance and the run-out age across 3000 plans', () => {
+		for (let i = 0; i < 3000; i++) {
+			const { a, assets } = randomPlan(rand);
+			for (const scenario of ['average', 'bad'] as const) {
+				const engine = project(assets, a, scenario); // no incomeAt/taxOn → tax 0
+				const oracle = simulate(assets, a, scenario);
+				expect(engine.runsOutAge).toBe(oracle.runsOutAge);
+				for (let k = 0; k < engine.points.length; k++) {
+					expect(near(engine.points[k].balance, oracle.points[k].balance, 1e-9)).toBe(true);
+				}
+			}
+		}
+	});
+});
+
+describe('project — monotonicity properties', () => {
+	const rand = rng(13);
+
+	it('more spending never makes the money last longer', () => {
+		for (let i = 0; i < 1500; i++) {
+			const { a, assets } = randomPlan(rand);
+			const less = project(assets, { ...a, spend: a.spend }, 'average');
+			const more = project(assets, { ...a, spend: a.spend + 5_000 }, 'average');
+			expect(longevity(more)).toBeLessThanOrEqual(longevity(less));
+		}
+	});
+
+	it('a bigger starting balance never makes the money last shorter', () => {
+		for (let i = 0; i < 1500; i++) {
+			const { a, assets } = randomPlan(rand);
+			const base = assets[0] as Super;
+			const richer = [new Super(base.balance + 50_000, base.nominalReturn), ...assets.slice(1)];
+			expect(longevity(project(richer, a, 'average'))).toBeGreaterThanOrEqual(
+				longevity(project(assets, a, 'average'))
+			);
+		}
+	});
+
+	it('the bad case never lasts longer than the average (positive real returns)', () => {
+		// This holds whenever the portfolio's real return is ≥ 0 — the realistic
+		// regime the app targets. It can FAIL when returns fall below inflation:
+		// the bad-case recovery climbs back toward the pre-crash level, injecting
+		// growth the steadily-declining average path lacks. So we require every
+		// asset to beat inflation here, matching real usage.
+		for (let i = 0; i < 2000; i++) {
+			const { a, assets } = randomPlan(rand);
+			const inflation = Math.min(...assets.map((x) => x.nominalReturn)) * 0.6;
+			const aa = { ...a, inflation };
+			expect(longevity(project(assets, aa, 'bad'))).toBeLessThanOrEqual(
+				longevity(project(assets, aa, 'average'))
+			);
+		}
+	});
+});
+
+describe('project — tax always costs, never helps', () => {
+	const rand = rng(14);
+	it('taxable bank interest never makes the money last longer than the same in tax-free super', () => {
+		for (let i = 0; i < 1500; i++) {
+			const startAge = 60 + Math.floor(rand() * 8);
+			const endAge = startAge + 10 + Math.floor(rand() * 30);
+			const rate = 0.02 + rand() * 0.05;
+			const superBal = Math.round(rand() * 800_000);
+			const otherBal = Math.round(50_000 + rand() * 600_000);
+			const a: Assumptions = {
+				startAge,
+				endAge,
+				spend: Math.round(20_000 + rand() * 60_000),
+				inflation: rand() * 0.035,
+				downturn: rand() * 0.4,
+				recoveryYears: Math.floor(rand() * 8)
+			};
+			const h = new Household('single', []);
+			const withTax: Assumptions = {
+				...a,
+				incomeAt: () => ({ gross: 0, taxable: 0 }),
+				taxOn: (assess, age) => h.taxOn(assess, age)
+			};
+			// Same money and same return, but taxable (bank) vs tax-free (super).
+			const taxable = project([new Super(superBal, rate), new BankAccount('c', otherBal, rate)], withTax, 'average');
+			const free = project([new Super(superBal + otherBal, rate)], withTax, 'average');
+			expect(longevity(taxable)).toBeLessThanOrEqual(longevity(free));
+		}
+	});
+});
+
+describe('project — income offsets spending, never shortens longevity', () => {
+	const rand = rng(15);
+	it('adding a taxable income stream never makes the money run out sooner', () => {
+		for (let i = 0; i < 1500; i++) {
+			const startAge = 60 + Math.floor(rand() * 8);
+			const endAge = startAge + 10 + Math.floor(rand() * 30);
+			const a: Assumptions = {
+				startAge,
+				endAge,
+				spend: Math.round(30_000 + rand() * 50_000),
+				inflation: rand() * 0.035,
+				downturn: rand() * 0.4,
+				recoveryYears: Math.floor(rand() * 8)
+			};
+			const assets = [new Super(Math.round(200_000 + rand() * 800_000), 0.02 + rand() * 0.06)];
+			const none = new Household('single', []);
+			const withInc = new Household('single', [
+				new IncomeSource('work', Math.round(rand() * 30_000), startAge, startAge + 5, true)
+			]);
+			const wrap = (h: Household): Assumptions => ({
+				...a,
+				incomeAt: (age) => ({ gross: h.grossIncomeAt(age), taxable: h.taxableIncomeAt(age) }),
+				taxOn: (assess, age) => h.taxOn(assess, age)
+			});
+			// Net income (gross − tax) is always ≥ 0 since marginal rates < 100%,
+			// so income can only extend or match longevity, never shorten it.
+			expect(longevity(project(assets, wrap(withInc), 'average'))).toBeGreaterThanOrEqual(
+				longevity(project(assets, wrap(none), 'average'))
+			);
+		}
+	});
+
+	it('an inflation-indexed income never lasts less long than the same fixed income', () => {
+		for (let i = 0; i < 1500; i++) {
+			const startAge = 60 + Math.floor(rand() * 8);
+			const endAge = startAge + 15 + Math.floor(rand() * 25);
+			const inflation = 0.01 + rand() * 0.04; // strictly positive so erosion bites
+			const a: Assumptions = {
+				startAge,
+				endAge,
+				spend: Math.round(35_000 + rand() * 45_000),
+				inflation,
+				downturn: rand() * 0.4,
+				recoveryYears: Math.floor(rand() * 8)
+			};
+			const assets = [new Super(Math.round(200_000 + rand() * 700_000), 0.03 + rand() * 0.05)];
+			const amt = Math.round(5_000 + rand() * 25_000);
+			const mk = (indexed: boolean) => {
+				const h = new Household('single', [
+					new IncomeSource('inc', amt, startAge, endAge, true, indexed)
+				]);
+				const ctx = { startAge, inflation };
+				const wrap: Assumptions = {
+					...a,
+					incomeAt: (age) => ({ gross: h.grossIncomeAt(age, ctx), taxable: h.taxableIncomeAt(age, ctx) }),
+					taxOn: (assess, age) => h.taxOn(assess, age, ctx)
+				};
+				return project(assets, wrap, 'average');
+			};
+			// Indexed income holds its real value; a fixed one erodes, so it offsets
+			// less over time and can only run out sooner or the same, never later.
+			expect(longevity(mk(true))).toBeGreaterThanOrEqual(longevity(mk(false)));
+		}
+	});
+});

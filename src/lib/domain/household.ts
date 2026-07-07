@@ -9,7 +9,7 @@
 // tax-free thresholds and two SAPTOs.
 
 import { taxOwed, CURRENT, type Filing, type TaxScale } from './tax';
-import { grossIncomeAt, taxableIncomeAt, type IncomeSource } from './income';
+import { grossIncomeAt, taxableIncomeAt, type IncomeSource, type RealCtx } from './income';
 
 export class Household {
 	constructor(
@@ -19,20 +19,20 @@ export class Household {
 	) {}
 
 	/** Gross income received at an age (offsets spending in the engine). */
-	grossIncomeAt(age: number): number {
-		return grossIncomeAt(this.incomes, age);
+	grossIncomeAt(age: number, ctx?: RealCtx): number {
+		return grossIncomeAt(this.incomes, age, ctx);
 	}
 
 	/** Assessable income from income sources at an age (for reporting). */
-	taxableIncomeAt(age: number): number {
-		return taxableIncomeAt(this.incomes, age);
+	taxableIncomeAt(age: number, ctx?: RealCtx): number {
+		return taxableIncomeAt(this.incomes, age, ctx);
 	}
 
 	/** Tax on the year's assessable income: investment income (from taxable assets)
 	 *  plus taxable income sources. A couple splits the total 50/50 and is assessed
 	 *  as two people; a single is assessed as one. */
-	taxOn(assetAssessable: number, age: number): number {
-		const assessable = assetAssessable + this.taxableIncomeAt(age);
+	taxOn(assetAssessable: number, age: number, ctx?: RealCtx): number {
+		const assessable = assetAssessable + this.taxableIncomeAt(age, ctx);
 		if (this.filing === 'single') {
 			return taxOwed(assessable, 'single', this.scale).total;
 		}
