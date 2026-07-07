@@ -47,6 +47,18 @@
 					<div class="acc-body">
 						<div class="field">
 							<div class="field-head">
+								<label for="household">Household</label>
+								<Help
+									text="Single or a couple. A couple is taxed as two people — two tax-free thresholds and two seniors offsets — so the same income is usually taxed less. Assets are split 50/50; you can assign each income to a partner below."
+								/>
+							</div>
+							<select id="household" bind:value={plan.household}>
+								<option value="single">Single</option>
+								<option value="couple">Couple</option>
+							</select>
+						</div>
+						<div class="field">
+							<div class="field-head">
 								<label for="retire">Retirement age</label>
 								<Help
 									text="The age you stop working and start drawing on your savings. Default 67 is the Age Pension age in Australia — you can access super earlier, but most people retire around here."
@@ -231,6 +243,16 @@
 											/>
 										</div>
 									</div>
+									{#if plan.household === 'couple'}
+										<div class="field">
+											<label for={`inc-owner-${i}`}>Belongs to</label>
+											<select id={`inc-owner-${i}`} bind:value={inc.owner}>
+												<option value="joint">Joint (split 50/50)</option>
+												<option value="a">Person A</option>
+												<option value="b">Person B</option>
+											</select>
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/each}
@@ -251,21 +273,12 @@
 				</button>
 				{#if open.assumptions}
 					<div class="acc-body">
-						<div class="field">
-							<div class="field-head">
-								<label for="tax">Tax on income (%)</label>
-								<Help
-									text="Effective tax rate on your taxable income — bank interest (and future income like rent or part-time work). Your super pension is tax-free, so this doesn't touch super. Many retirees pay little: super is tax-free and the seniors offset covers modest income, so set it lower if your taxable income is small."
-								/>
-							</div>
-							<input
-								id="tax"
-								type="number"
-								step="1"
-								value={pct(plan.taxRate)}
-								oninput={(e) => (plan.taxRate = (Number(e.currentTarget.value) || 0) / 100)}
-							/>
-						</div>
+						<p class="field-note">
+							Tax is worked out for you each year from your assessable income — bank interest plus any
+							taxable income like rent or part-time work — using current resident rates (marginal
+							brackets, SAPTO, LITO and the Medicare levy). Your super pension is tax-free, so it's
+							never taxed. Many retirees pay little or nothing.
+						</p>
 						<div class="field">
 							<div class="field-head">
 								<label for="inf">Inflation (% p.a.)</label>
