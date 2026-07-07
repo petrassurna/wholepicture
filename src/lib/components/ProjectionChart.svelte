@@ -20,7 +20,8 @@
 		downturn: plan.downturn,
 		recoveryYears: plan.recoveryYears,
 		incomeAt: (age) => plan.incomeAt(age),
-		taxOn: (assetAssessable, age) => plan.taxOn(assetAssessable, age)
+		taxOn: (assetAssessable, age) => plan.taxOn(assetAssessable, age),
+		pensionAt: (assets, age) => plan.pensionAt(assets, age)
 	});
 	const avg = $derived(project(plan.assets, assumptions, 'average'));
 	const bad = $derived(project(plan.assets, assumptions, 'bad'));

@@ -27,6 +27,8 @@ export interface Assumptions {
 	incomeAt?: (age: number) => { gross: number; taxable: number };
 	/** Tax on the year's assessable income, given investment income from taxable assets. */
 	taxOn?: (assetAssessable: number, age: number) => number;
+	/** Tax-free Age Pension for the year, given the opening financial assets. */
+	pensionAt?: (financialAssets: number, age: number) => number;
 }
 
 export interface Point {
@@ -60,6 +62,7 @@ function drawPro(bals: number[], net: number): void {
 
 export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Projection {
 	const incomeAt = a.incomeAt ?? (() => ({ gross: 0, taxable: 0 }));
+	const pensionAt = a.pensionAt ?? (() => 0);
 	const taxOn = a.taxOn ?? (() => 0);
 
 	const bals = assets.map((x) => x.balance);
@@ -98,8 +101,12 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 		}
 		totalTax += tax;
 
-		// Net cash drawn from the portfolio: spending plus tax, less gross income.
-		drawPro(bals, a.spend + tax - inc.gross);
+		// Tax-free Age Pension for the year, from the opening financial assets — a
+		// means-tested income that rises as the portfolio falls, so it offsets the draw.
+		const pension = pensionAt(opening, age);
+
+		// Net cash drawn from the portfolio: spending plus tax, less income and pension.
+		drawPro(bals, a.spend + tax - inc.gross - pension);
 
 		if (bals.reduce((s, b) => s + b, 0) <= 0) {
 			bals.fill(0);

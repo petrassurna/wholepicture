@@ -10,6 +10,7 @@
 
 import { taxOwed, CURRENT, type Filing, type TaxScale } from './tax';
 import { grossIncomeAt, taxableIncomeAt, type IncomeSource, type RealCtx } from './income';
+import { agePension } from './pension';
 
 export class Household {
 	constructor(
@@ -37,5 +38,11 @@ export class Household {
 			return taxOwed(assessable, 'single', this.scale).total;
 		}
 		return 2 * taxOwed(assessable / 2, 'couple', this.scale).total;
+	}
+
+	/** Age Pension (assets test) payable given the year's financial assets. Tax-free;
+	 *  v1 assumes the household owns its home (as the spending model does). */
+	agePensionAt(financialAssets: number, age: number): number {
+		return agePension(age, financialAssets, this.filing, true);
 	}
 }

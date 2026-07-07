@@ -24,7 +24,8 @@ function rng(seed: number) {
 }
 
 const longevity = (p: { runsOutAge: number | null }) => p.runsOutAge ?? Infinity;
-const near = (a: number, b: number, tol = 1e-6) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+const near = (a: number, b: number, tol = 1e-6) =>
+	Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
 
 // A random plan: assumptions + a portfolio of tax-free super assets only (so the
 // engine's mechanics can be compared to a no-tax oracle), returned separately.
@@ -49,7 +50,8 @@ function randomPlan(rand: () => number) {
 function simulate(assets: Asset[], a: Assumptions, scenario: Scenario) {
 	const bal = assets.map((x) => x.balance);
 	const growth = assets.map((x) => realReturn(x.nominalReturn, a.inflation));
-	const recovery = a.recoveryYears > 0 ? Math.pow(1 / (1 - a.downturn), 1 / a.recoveryYears) - 1 : 0;
+	const recovery =
+		a.recoveryYears > 0 ? Math.pow(1 / (1 - a.downturn), 1 / a.recoveryYears) - 1 : 0;
 	const points: { age: number; balance: number }[] = [];
 	let runsOutAge: number | null = null;
 
@@ -199,7 +201,11 @@ describe('project — tax always costs, never helps', () => {
 				taxOn: (assess, age) => h.taxOn(assess, age)
 			};
 			// Same money and same return, but taxable (bank) vs tax-free (super).
-			const taxable = project([new Super(superBal, rate), new BankAccount('c', otherBal, rate)], withTax, 'average');
+			const taxable = project(
+				[new Super(superBal, rate), new BankAccount('c', otherBal, rate)],
+				withTax,
+				'average'
+			);
 			const free = project([new Super(superBal + otherBal, rate)], withTax, 'average');
 			expect(longevity(taxable)).toBeLessThanOrEqual(longevity(free));
 		}
@@ -260,7 +266,10 @@ describe('project — income offsets spending, never shortens longevity', () => 
 				const ctx = { startAge, inflation };
 				const wrap: Assumptions = {
 					...a,
-					incomeAt: (age) => ({ gross: h.grossIncomeAt(age, ctx), taxable: h.taxableIncomeAt(age, ctx) }),
+					incomeAt: (age) => ({
+						gross: h.grossIncomeAt(age, ctx),
+						taxable: h.taxableIncomeAt(age, ctx)
+					}),
 					taxOn: (assess, age) => h.taxOn(assess, age, ctx)
 				};
 				return project(assets, wrap, 'average');
@@ -269,5 +278,46 @@ describe('project — income offsets spending, never shortens longevity', () => 
 			// less over time and can only run out sooner or the same, never later.
 			expect(longevity(mk(true))).toBeGreaterThanOrEqual(longevity(mk(false)));
 		}
+	});
+});
+
+describe('project — Age Pension never shortens longevity, and stabilises modest plans', () => {
+	const rand = rng(16);
+
+	it('including the pension never makes the money run out sooner (2000 plans)', () => {
+		for (let i = 0; i < 2000; i++) {
+			const { a, assets } = randomPlan(rand);
+			const h = new Household('single', []);
+			const withP: Assumptions = {
+				...a,
+				pensionAt: (assetsBal, age) => h.agePensionAt(assetsBal, age)
+			};
+			// The pension is tax-free income offsetting the draw, so it can only extend
+			// or match longevity — never shorten it.
+			expect(longevity(project(assets, withP, 'average'))).toBeGreaterThanOrEqual(
+				longevity(project(assets, a, 'average'))
+			);
+		}
+	});
+
+	it('a modest homeowner never runs out — spending under the max pension is sustained', () => {
+		// Spend below the single max pension ($29,754); once assets fall enough the
+		// pension covers spending entirely, so the pot stabilises and never depletes.
+		const h = new Household('single', []);
+		const p = project(
+			[new Super(250_000, 0.05)],
+			{
+				startAge: 67,
+				endAge: 105,
+				spend: 25_000,
+				inflation: 0.025,
+				downturn: 0.3,
+				recoveryYears: 5,
+				pensionAt: (assetsBal, age) => h.agePensionAt(assetsBal, age)
+			},
+			'average'
+		);
+		expect(p.runsOutAge).toBeNull();
+		expect(p.points.at(-1)!.balance).toBeGreaterThan(0);
 	});
 });

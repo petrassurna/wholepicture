@@ -91,6 +91,13 @@
 							</div>
 							<input id="planto" type="number" min="70" max="110" bind:value={plan.planToAge} />
 						</div>
+						<label class="check">
+							<input type="checkbox" bind:checked={plan.includePension} />
+							<span>Include Age Pension</span>
+							<Help
+								text="Adds the means-tested Age Pension (tax-free, from age 67) as it phases in — a stabiliser that rises as your savings fall, so many retirees glide onto a part or full pension rather than running out. v1 models the assets test and assumes you own your home (the home is exempt). The income test and non-homeowner rules aren't modelled yet."
+							/>
+						</label>
 					</div>
 				{/if}
 			</section>

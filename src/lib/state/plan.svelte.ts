@@ -130,6 +130,9 @@ class Plan {
 	downturn = $state(0.3);
 	recoveryYears = $state(5);
 
+	// Include the means-tested Age Pension (assets test) as it phases in.
+	includePension = $state(true);
+
 	// Don't persist until we've loaded, so the initial save() can't clobber
 	// saved data with the defaults.
 	_loaded = false;
@@ -193,6 +196,11 @@ class Plan {
 	/** Tax on the year's assessable income given investment income from taxable assets. */
 	taxOn(assetAssessable: number, age: number): number {
 		return this.taxUnit.taxOn(assetAssessable, age, this.realCtx);
+	}
+
+	/** Tax-free Age Pension for the year, given the opening financial assets. */
+	pensionAt(financialAssets: number, age: number): number {
+		return this.includePension ? this.taxUnit.agePensionAt(financialAssets, age) : 0;
 	}
 
 	// Super slider ceiling depends on household (a couple's combined pot is bigger).
@@ -262,6 +270,7 @@ class Plan {
 				if (typeof d.inflation === 'number') this.inflation = d.inflation;
 				if (typeof d.downturn === 'number') this.downturn = d.downturn;
 				if (typeof d.recoveryYears === 'number') this.recoveryYears = d.recoveryYears;
+				if (typeof d.includePension === 'boolean') this.includePension = d.includePension;
 				if (Array.isArray(d.bankAccounts)) {
 					this.bankAccounts = d.bankAccounts
 						.filter(
@@ -336,7 +345,8 @@ class Plan {
 			spendItems: this.spendItems,
 			inflation: this.inflation,
 			downturn: this.downturn,
-			recoveryYears: this.recoveryYears
+			recoveryYears: this.recoveryYears,
+			includePension: this.includePension
 		});
 		if (this._loaded && typeof localStorage !== 'undefined') {
 			try {
@@ -362,6 +372,7 @@ class Plan {
 		this.inflation = 0.025;
 		this.downturn = 0.3;
 		this.recoveryYears = 5;
+		this.includePension = true;
 	}
 }
 

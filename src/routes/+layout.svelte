@@ -23,6 +23,7 @@
 	<div class="links">
 		<a href="/#why">Why</a>
 		<a href="/#how">How it works</a>
+		<a href="/blog">Guides</a>
 		<a class="btn btn-outline" href="/model">Try it</a>
 	</div>
 </nav>
