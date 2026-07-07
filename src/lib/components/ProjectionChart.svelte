@@ -103,11 +103,13 @@
 		avg.points.map((p) => `${x(p.age).toFixed(1)},${yt(p.tax).toFixed(1)}`).join(' ')
 	);
 
-	// Hover readout for the tax view.
+	// Hover readout (shared — only one view is visible at a time).
 	let hoverAge = $state<number | null>(null);
 	const hp = $derived(hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null));
+	const hAvg = $derived(hoverAge == null ? null : (avg.points.find((p) => p.age === hoverAge) ?? null));
+	const hBad = $derived(hoverAge == null ? null : (bad.points.find((p) => p.age === hoverAge) ?? null));
 	const fmtFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
-	function onTaxMove(e: PointerEvent) {
+	function onHover(e: PointerEvent) {
 		const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
 		const vbX = ((e.clientX - rect.left) / rect.width) * 400;
 		const raw = plan.retireAge + ((vbX - 44) / 340) * (plan.planToAge - plan.retireAge);
@@ -152,7 +154,7 @@
 		viewBox="0 0 400 216"
 		role="img"
 		aria-label="Taxable income and tax paid each year"
-		onpointermove={onTaxMove}
+		onpointermove={onHover}
 		onpointerleave={() => (hoverAge = null)}
 	>
 		<rect x="0" y="0" width="400" height="216" fill="transparent" />
@@ -224,7 +226,14 @@
 		{/if}
 	</p>
 {:else}
-	<svg viewBox="0 0 400 216" role="img" aria-label="Interactive projection of your balance">
+	<svg
+		viewBox="0 0 400 216"
+		role="img"
+		aria-label="Interactive projection of your balance"
+		onpointermove={onHover}
+		onpointerleave={() => (hoverAge = null)}
+	>
+		<rect x="0" y="0" width="400" height="216" fill="transparent" />
 		<g stroke="#eef1f4" stroke-width="1">
 			<line x1="44" y1="70" x2="384" y2="70" />
 			<line x1="44" y1="129" x2="384" y2="129" />
@@ -263,6 +272,24 @@
 		{/if}
 		{#if badEnd}
 			<circle cx={x(badEnd.age)} cy={y(badEnd.balance)} r="3.4" fill="#d9534f" />
+		{/if}
+
+		{#if hAvg && hBad}
+			{@const hx = x(hAvg.age)}
+			{@const flip = hx > 200}
+			<g pointer-events="none">
+				<line x1={hx} y1="40" x2={hx} y2="188" stroke="#cbd3dd" stroke-width="1" stroke-dasharray="3 3" />
+				<circle cx={hx} cy={y(hAvg.balance)} r="3.4" fill="#0f2540" />
+				<circle cx={hx} cy={y(hBad.balance)} r="3.4" fill="#d9534f" />
+				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 44)`}>
+					<rect width="146" height="58" rx="6" fill="#0f2540" opacity="0.96" />
+					<text x="10" y="18" font-size="12" font-weight="700" fill="#fff">Age {hAvg.age}</text>
+					<circle cx="13" cy="33" r="3" fill="#8fa6c4" />
+					<text x="22" y="37" font-size="11.5" fill="#dce4ef">Average {fmtFull(hAvg.balance)}</text>
+					<circle cx="13" cy="48" r="3" fill="#d9534f" />
+					<text x="22" y="52" font-size="11.5" fill="#dce4ef">Bad case {fmtFull(hBad.balance)}</text>
+				</g>
+			</g>
 		{/if}
 
 		<g font-size="11" fill="#93a0b0" text-anchor="middle">
