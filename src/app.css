@@ -349,6 +349,46 @@ a {
 	}
 }
 
+/* Work-in-progress disclaimer modal */
+.modal-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background: rgba(15, 37, 64, 0.55);
+	backdrop-filter: blur(2px);
+	animation: fadeUp 0.25s ease-out;
+}
+.modal-card {
+	background: #fff;
+	border-radius: 16px;
+	max-width: 460px;
+	width: 100%;
+	padding: 28px 28px 24px;
+	box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+	border-top: 4px solid #e0a500;
+}
+.modal-card h2 {
+	margin: 0 0 12px;
+	font-size: 20px;
+	color: var(--navy);
+}
+.modal-card p {
+	margin: 0 0 12px;
+	font-size: 14.5px;
+	line-height: 1.55;
+	color: var(--ink);
+}
+.modal-card strong {
+	color: #8a5a00;
+}
+.modal-card .btn {
+	margin-top: 6px;
+}
+
 /* Sections */
 section {
 	padding: 56px 0;

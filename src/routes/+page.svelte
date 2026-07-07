@@ -2,6 +2,7 @@
 	import Hero from '$lib/components/Hero.svelte';
 	import Problem from '$lib/components/Problem.svelte';
 	import HowItWorks from '$lib/components/HowItWorks.svelte';
+	import DevDisclaimer from '$lib/components/DevDisclaimer.svelte';
 </script>
 
 <svelte:head>
@@ -16,6 +17,8 @@
 		content="A free Australian projection tool — model how long your super could last in retirement and explore different scenarios. Not financial advice."
 	/>
 </svelte:head>
+
+<DevDisclaimer />
 
 <Hero />
 <Problem />
