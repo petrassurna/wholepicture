@@ -51,14 +51,18 @@
 					<div class="slider">
 						<div class="slider-top">
 							<span>Spend per year</span>
-							<b>{money(plan.spendPerYear)}</b>
+							<b>{money(plan.spend)}</b>
 						</div>
 						<input
 							type="range"
 							min="30000"
 							max="150000"
 							step="2500"
-							bind:value={plan.spendPerYear}
+							value={plan.spend}
+							oninput={(e) => {
+								plan.spendItems = [];
+								plan.spendPerYear = Number(e.currentTarget.value);
+							}}
 						/>
 					</div>
 				</div>
@@ -66,6 +70,7 @@
 				<p class="assume">
 					In today's dollars · ~{(plan.realReturn * 100).toFixed(1)}% p.a. return after inflation
 				</p>
+				<a class="btn btn-primary chart-cta" href="/model">Customise with your own numbers →</a>
 				<p class="chart-note">
 					Illustrative projections only. Actual investment returns, inflation, tax, fees and future
 					spending will differ.

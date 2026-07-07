@@ -15,7 +15,7 @@
 	const assumptions = $derived<Assumptions>({
 		startAge: plan.retireAge,
 		endAge: plan.planToAge,
-		spend: plan.spendPerYear,
+		spend: plan.spend,
 		inflation: plan.inflation,
 		downturn: plan.downturn,
 		recoveryYears: plan.recoveryYears,
@@ -25,16 +25,32 @@
 	const avg = $derived(project(plan.assets, assumptions, 'average'));
 	const bad = $derived(project(plan.assets, assumptions, 'bad'));
 
-	const yMax = $derived(
+	// Round an axis up to "nice" gridline values so they read as round amounts.
+	const niceStep = (max: number): number => {
+		const target = Math.max(max, 1) / 4; // aim for ~4 divisions
+		const pow = Math.pow(10, Math.floor(Math.log10(target)));
+		const n = target / pow;
+		const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+		return nice * pow;
+	};
+
+	const balMax = $derived(
 		Math.max(
 			plan.totalBalance,
 			...avg.points.map((p) => p.balance),
 			...bad.points.map((p) => p.balance)
-		) * 1.05
+		)
 	);
+	const balStep = $derived(niceStep(balMax));
+	const balAxisMax = $derived(Math.max(balStep, Math.ceil(balMax / balStep) * balStep));
+	const balYTicks = $derived.by(() => {
+		const ticks: number[] = [];
+		for (let v = 0; v <= balAxisMax + 1e-6; v += balStep) ticks.push(v);
+		return ticks;
+	});
 
 	const x = (age: number) => 44 + ((age - plan.retireAge) / (plan.planToAge - plan.retireAge)) * 340;
-	const y = (b: number) => 188 - (b / yMax) * 148;
+	const y = (b: number) => 188 - (b / balAxisMax) * 148;
 
 	const axisTicks = $derived.by(() => {
 		const span = plan.planToAge - plan.retireAge;
@@ -73,20 +89,14 @@
 	const axisMoney = (n: number) =>
 		n === 0
 			? '$0'
-			: n >= 1000
-				? `$${Number.isInteger(n / 1000) ? n / 1000 : (n / 1000).toFixed(1)}k`
-				: `$${Math.round(n)}`;
+			: n >= 1_000_000
+				? `$${Number.isInteger(n / 1_000_000) ? n / 1_000_000 : (n / 1_000_000).toFixed(1)}M`
+				: n >= 1000
+					? `$${Number.isInteger(n / 1000) ? n / 1000 : (n / 1000).toFixed(1)}k`
+					: `$${Math.round(n)}`;
 
 	// --- Tax view: taxable income vs tax paid, as two lines (average case) ---
 	const totalTax = $derived(avg.totalTax);
-	// Round the y-axis up to "nice" gridline values so amounts are easy to read.
-	const niceStep = (max: number): number => {
-		const target = Math.max(max, 1) / 3; // aim for ~3 divisions
-		const pow = Math.pow(10, Math.floor(Math.log10(target)));
-		const n = target / pow;
-		const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
-		return nice * pow;
-	};
 	const rawIncMax = $derived(Math.max(1, ...avg.points.map((p) => p.assessableIncome)));
 	const taxStep = $derived(niceStep(rawIncMax));
 	const taxAxisMax = $derived(Math.ceil(rawIncMax / taxStep) * taxStep);
@@ -235,9 +245,14 @@
 	>
 		<rect x="0" y="0" width="400" height="216" fill="transparent" />
 		<g stroke="#eef1f4" stroke-width="1">
-			<line x1="44" y1="70" x2="384" y2="70" />
-			<line x1="44" y1="129" x2="384" y2="129" />
-			<line x1="44" y1="188" x2="384" y2="188" />
+			{#each balYTicks as v}
+				<line x1="44" y1={y(v).toFixed(1)} x2="384" y2={y(v).toFixed(1)} />
+			{/each}
+		</g>
+		<g font-size="11" fill="#93a0b0" text-anchor="end">
+			{#each balYTicks as v}
+				<text x="40" y={(y(v) + 3.5).toFixed(1)}>{axisMoney(v)}</text>
+			{/each}
 		</g>
 
 		<circle cx="48" cy="12.5" r="3.2" fill="#0f2540" />
