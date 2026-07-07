@@ -32,6 +32,7 @@
 
 <footer class="disclaimer">
 	<div class="foot-links">
+		<a href="/assumptions">How it works & assumptions</a>
 		<a href="/terms">Terms of Service</a>
 		<a href="/privacy">Privacy Policy</a>
 	</div>

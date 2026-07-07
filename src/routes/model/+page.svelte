@@ -5,6 +5,7 @@
 	import MoneyInput from '$lib/components/MoneyInput.svelte';
 	import H1 from '$lib/components/H1.svelte';
 	import { plan, FREQ, FREQ_OPTIONS } from '$lib/state/plan.svelte';
+	import { CURRENT_PENSION } from '$lib/domain/pension';
 
 	// Independent collapsible sections — scales to any number of categories.
 	let open = $state({
@@ -44,6 +45,7 @@
 					In today's dollars <Help
 						text="Every figure is shown in today's money — what it's worth to you now, not an inflated future amount. Spending stays flat because it's already in today's dollars, and returns are shown after inflation: 7% growth with 2.5% inflation appears as about 4.4%. So a $52,200 budget buys the same lifestyle each year even as prices rise."
 					/> · illustrative only; actual returns, tax and future spending will differ.
+					<a href="/assumptions">Assumptions</a>.
 				</p>
 			</div>
 			<Calculations />
@@ -106,9 +108,20 @@
 							<input type="checkbox" bind:checked={plan.includePension} />
 							<span>Include Age Pension</span>
 							<Help
-								text="Adds the means-tested Age Pension (tax-free, from age 67) as it phases in — a stabiliser that rises as your savings fall, so many retirees glide onto a part or full pension rather than running out. v1 models the assets test and assumes you own your home (the home is exempt). The income test and non-homeowner rules aren't modelled yet."
+								text="Adds the means-tested Age Pension (tax-free, from age 67) as it phases in — a stabiliser that rises as your savings fall, so many retirees glide onto a part or full pension rather than running out. v1 models the assets test only and assumes you own your home (the home is exempt). The income test and non-homeowner rules aren't modelled yet."
 							/>
 						</label>
+						{#if plan.includePension}
+							<p class="warn-note">
+								⚠ <strong>Age Pension is a rough estimate only.</strong> It uses published rates as at
+								{CURRENT_PENSION.asAt}, which change several times a year, and it models the assets test
+								only (not the income test or your full circumstances). Do not rely on it — confirm your
+								actual entitlement with
+								<a href="https://www.servicesaustralia.gov.au/age-pension" target="_blank" rel="noopener"
+									>Services Australia</a
+								> or a licensed adviser.
+							</p>
+						{/if}
 					</div>
 				{/if}
 			</section>

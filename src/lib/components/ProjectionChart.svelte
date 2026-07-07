@@ -5,12 +5,12 @@
 	// Household toggle is a home-page preset only (it just swaps default numbers).
 	let { household = false }: { household?: boolean } = $props();
 
-	// Chart view — the Tax view only exists when there's assessable income.
+	// Chart view — the Tax view only exists when there's assessable income. `view`
+	// is the user's choice; `activeView` forces Balance when the Tax tab is hidden,
+	// without an effect (so the user's choice is remembered if it reappears).
 	let view = $state<'balance' | 'tax'>('balance');
 	const showTaxTab = $derived(plan.hasTaxableItems);
-	$effect(() => {
-		if (!showTaxTab && view === 'tax') view = 'balance';
-	});
+	const activeView = $derived(showTaxTab ? view : 'balance');
 
 	const assumptions = $derived<Assumptions>(plan.buildAssumptions());
 	const avg = $derived(project(plan.assets, assumptions, 'average'));
@@ -126,7 +126,7 @@
 
 <div class="ct">
 	<h4>
-		{#if view === 'tax'}
+		{#if activeView === 'tax'}
 			{compact(totalTax)} in tax to age {plan.planToAge}
 		{:else}
 			{compact(plan.totalBalance)}
@@ -157,7 +157,7 @@
 	{/if}
 </div>
 
-{#if view === 'tax'}
+{#if activeView === 'tax'}
 	<svg
 		viewBox="0 0 400 216"
 		role="img"

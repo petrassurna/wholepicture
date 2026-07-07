@@ -3,6 +3,8 @@
 	import { CURRENT_PENSION } from '$lib/domain/pension';
 	import { plan } from '$lib/state/plan.svelte';
 
+	const pensionAsAt = CURRENT_PENSION.asAt;
+
 	// A transparency + self-check panel. It recomputes the year-by-year arithmetic
 	// behind the graph from the displayed formula, and confirms each year lands on
 	// the engine's number. "Step" explains one year in full; "Table" reconciles the
@@ -16,12 +18,11 @@
 
 	const proj = $derived(project(plan.assets, plan.buildAssumptions(), scenario));
 
-	$effect(() => {
-		const lo = plan.retireAge;
-		const hi = plan.planToAge - 1;
-		if (age < lo) age = lo;
-		if (age > hi) age = hi;
-	});
+	// The age to inspect, kept within the drawdown range without an effect (which
+	// would read and write `age` and loop). The input binds to `shownAge`.
+	const ageLo = $derived(plan.retireAge);
+	const ageHi = $derived(Math.max(plan.retireAge, plan.planToAge - 1));
+	const shownAge = $derived(Math.min(Math.max(age, ageLo), ageHi));
 
 	const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU');
 	const num = (n: number) => Math.round(n).toLocaleString('en-AU');
@@ -79,16 +80,23 @@
 		const pension = plan.pensionAt(opening, A);
 
 		// Show where the pension figure comes from (assets test, homeowner v1).
+		// Show the pension working whenever it's switched on — including why it's $0.
 		let pensionEq = '';
-		if (pension > 0.5) {
+		if (plan.includePension) {
 			const s = CURRENT_PENSION;
 			const max = s.maxAnnual[plan.household];
 			const freeArea = s.assetFreeArea.homeowner[plan.household];
-			if (opening <= freeArea) {
+			if (A < s.eligibilityAge) {
+				pensionEq = `age ${A} is under the pension age (${s.eligibilityAge}) → $0`;
+			} else if (opening <= freeArea) {
 				pensionEq = `assets ${num(opening)} are under the ${num(freeArea)} free area → full pension ${num(max)}`;
 			} else {
 				const reduction = (opening - freeArea) * s.taperPerDollar;
-				pensionEq = `${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(max)} − ${num(reduction)} = ${num(pension)}`;
+				const raw = max - reduction;
+				pensionEq =
+					raw > 0
+						? `${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(max)} − ${num(reduction)} = ${num(pension)}`
+						: `${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(max)} − ${num(reduction)} = ${num(raw)} → clamped to $0 (assets above the cut-off)`;
 			}
 		}
 
@@ -124,7 +132,7 @@
 		};
 	}
 
-	const calc = $derived(computeYear(age));
+	const calc = $derived(computeYear(shownAge));
 
 	const rows = $derived.by(() => {
 		const out: Year[] = [];
@@ -169,7 +177,13 @@
 				{#if mode === 'step'}
 					<label class="calc-age">
 						Age
-						<input type="number" min={plan.retireAge} max={plan.planToAge - 1} bind:value={age} />
+						<input
+							type="number"
+							min={ageLo}
+							max={ageHi}
+							value={shownAge}
+							oninput={(e) => (age = Number(e.currentTarget.value) || ageLo)}
+						/>
 					</label>
 				{/if}
 			</div>
@@ -184,9 +198,11 @@
 						<span class="calc-label">Opening balance at age {calc.A}</span>
 						<code>{money(calc.opening)}</code>
 					</li>
-					{#if calc.pension > 0.5}
+					{#if calc.pensionEq}
 						<li>
-							<span class="calc-label">Age Pension for the year (assets test)</span>
+							<span class="calc-label"
+								>Age Pension for the year (assets test · rates as at {pensionAsAt}; estimate only)</span
+							>
 							<code>{calc.pensionEq}</code>
 						</li>
 					{/if}

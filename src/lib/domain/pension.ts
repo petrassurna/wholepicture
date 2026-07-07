@@ -6,7 +6,7 @@
 //
 // Today's-dollars assumption (as elsewhere): the pension is indexed, so its real
 // value is constant and one year's scale applies to every projection year. Swap
-// PENSION_2024_25 for a newer year when confirmed — nothing else changes.
+// the dated scale below for a newer one when confirmed — nothing else changes.
 //
 // Not yet modelled (v1): the income test + deeming, and non-homeowner rent
 // assistance. The family home is exempt from the assets test — and this model
@@ -18,7 +18,8 @@ import type { Filing } from './tax';
 export type Ownership = 'homeowner' | 'nonHomeowner';
 
 export interface PensionScale {
-	readonly year: string;
+	/** The date these figures took effect — shown to users so they can judge staleness. */
+	readonly asAt: string;
 	/** Maximum annual pension incl. supplements (single / couple combined). */
 	readonly maxAnnual: Record<Filing, number>;
 	/** Assets below this get the full pension; above it the payment tapers. */
@@ -30,23 +31,29 @@ export interface PensionScale {
 }
 
 // ---------------------------------------------------------------------------
-// 2024-25 rates. CONFIRM/UPDATE against Services Australia each year. Max rates
-// are the combined single / couple totals incl. pension + energy supplements;
-// taper is $3/fortnight per $1,000 over the free area = $78/yr per $1,000.
+// !!!  VOLATILE — VERIFY BEFORE TRUSTING  !!!
+// Age Pension rates and thresholds are indexed THREE times a year (20 March,
+// 1 July, 20 September) and move every time. These are the 1 July 2026 figures
+// from Services Australia / Noel Whittaker's calculator. They WILL go stale —
+// confirm at servicesaustralia.gov.au and update `asAt` when you do. The taper
+// ($3/fortnight per $1,000 = $78/yr per $1,000 = 0.078) has been stable since
+// 2017. Max rates are the combined single / couple totals incl. supplements.
+// Non-homeowner couple free area is derived from the homeowner offset and is
+// unused while the app assumes a homeowner.
 // ---------------------------------------------------------------------------
-export const PENSION_2024_25: PensionScale = {
-	year: '2024-25',
-	maxAnnual: { single: 29_754, couple: 44_855 },
+export const PENSION_JUL_2026: PensionScale = {
+	asAt: '1 July 2026',
+	maxAnnual: { single: 31_223, couple: 47_070 },
 	assetFreeArea: {
-		homeowner: { single: 314_000, couple: 470_000 },
-		nonHomeowner: { single: 566_000, couple: 722_000 }
+		homeowner: { single: 333_000, couple: 499_000 },
+		nonHomeowner: { single: 600_000, couple: 766_000 }
 	},
 	taperPerDollar: 0.078,
 	eligibilityAge: 67
 };
 
 /** The scale used when a caller doesn't specify one. */
-export const CURRENT_PENSION: PensionScale = PENSION_2024_25;
+export const CURRENT_PENSION: PensionScale = PENSION_JUL_2026;
 
 /**
  * Age Pension payable for the year (assets test), in today's dollars.

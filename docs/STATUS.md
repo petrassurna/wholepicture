@@ -55,12 +55,25 @@ A working, chart-first retirement model — a focused but steadily growing slice
 
 **6. Honest + verifiable by design.** "Illustrative only," visible/editable assumptions, a prominent work-in-progress disclaimer, and the **calculations panel** that shows and self-checks the arithmetic. The product *shows consequences, never recommends* (see the vision doc's "Safe by Design"). The blog holds the same line — factual/educational only.
 
+### ⚠️ Accuracy risk to watch — statutory rates go stale (and could be wrong)
+
+The tax and Age Pension figures are **legislated constants that change several times a year** (pension: 20 Mar / 1 Jul / 20 Sep; tax: each financial year). They live in dated, swappable tables (`tax.ts`, `pension.ts`), but **if they're not kept current the tool will quietly show wrong numbers** — and for the Age Pension especially, the figures moved so often that three different AIs each quoted a different (stale) number during development. This is a real **false-information / liability risk**: a user could take a pension estimate as fact.
+
+Containment in place:
+- Pension constants are date-stamped (`asAt`) and that date is shown to the user; the model page carries a **prominent "estimate only — verify with Services Australia" warning** whenever the pension is on; the calc panel labels the pension line as an estimate.
+- The pension models the **assets test only** — the income test could reduce it further, so it can *overstate* entitlement.
+
+Process rule: **before any release, re-verify the tax and pension constants against the ATO and Services Australia, and bump the `asAt` date.** Never present these as an entitlement — always an estimate.
+
+> **Keep these three in sync when anything changes:** the constants (`tax.ts` / `pension.ts`), this doc, and the **public `/assumptions` page** (`src/routes/assumptions/+page.svelte`). That page is the user-facing statement of every assumption and limitation — it pulls the tax/pension *dates* live from the constants, but its prose (what's modelled, what isn't) must be updated by hand when the model changes.
+
 ### Known simplifications (accepted for now)
 - The bad-case **crash hits the whole portfolio**, including bank/TDs — unrealistic for cash; a term deposit doesn't crash.
 - **Accumulation applies a 15% earnings-tax drag to every asset**, not just super. Correct for super (the dominant accumulation asset); for a bank account the working-years marginal rate is usually higher, so 15% understates it slightly.
 - **Age Pension v1 is the assets test only**, homeowner, single/couple. The income test + deeming and non-homeowner rules aren't modelled — for asset-rich retirees the assets test almost always binds, so this is close.
 - **No concessional-cap enforcement** — a very large "Pays into super" figure isn't capped at $30k/yr, and Division 293 for high earners isn't modelled.
-- **Tax + pension constants are 2024-25**; FY2026-27 has legislated bracket cuts not yet entered.
+- **Minimum super drawdown not enforced.** The law forces a minimum annual withdrawal (5% at 65–74, rising to 14% at 95+). The model draws only what you need and leaves the rest compounding tax-free in super. It only diverges for big-balance / low-spend cases (forced withdrawals would move to a taxable account), and it affects *terminal wealth* via a tax drag, not *how long the money lasts*. Super **death-benefits tax** (~15–17% on benefits to non-dependents) is likewise not modelled — relevant only if terminal/estate wealth becomes a headline output.
+- **Statutory constants:** pension rates verified as at **1 July 2026** (`pension.ts`); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
 - **Money is a raw `number`** — no `Money`/`Percent`/`Age` value objects yet (the vision/MVP called for integer-cents `Money`).
 - **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items *are* treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation; a single "spend grows above inflation" knob is the cheap future option if wanted.
 
@@ -86,3 +99,4 @@ Prioritised, with the reasoning behind the order:
 - [`VISION.md`](./VISION.md) — product vision (why / what-forever). Aspirational.
 - `STATUS.md` (this file) — where we are, how, and what's next. The current truth.
 - [`../README.md`](../README.md) — how to run the app.
+- **`src/routes/assumptions/+page.svelte`** — the **user-facing** statement of every assumption and limitation (the `/assumptions` page). Keep it in sync with the model and the constants.
