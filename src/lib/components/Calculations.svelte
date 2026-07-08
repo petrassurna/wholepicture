@@ -499,7 +499,8 @@
 					{#if calc.investParts.length}
 						<li>
 							<span class="calc-label"
-								>Taxable income from your accounts this year (balance × taxable income rate)</span
+								>Taxable income from your accounts this year (balance × return — the whole return is
+								taxed)</span
 							>
 							{#each calc.investParts as part}
 								<code class="calc-line">{part}</code>

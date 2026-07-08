@@ -215,9 +215,9 @@
 								/>
 								{#if plan.sgContribution > 0}
 									<p class="field-note note-sm">
-										Note: {pct(plan.sgRate)}% of {money(plan.salary)} = <strong
-											>{money(plan.sgContribution)}/yr</strong
-										>; {money(plan.sgIntoSuper)} lands in super after the 15% contributions tax.
+										Note: {pct(plan.sgRate)}% of {money(plan.salary)} =
+										<strong>{money(plan.sgContribution)}/yr</strong>; {money(plan.sgIntoSuper)} lands
+										in super after the 15% contributions tax.
 									</p>
 								{/if}
 							</div>
@@ -233,15 +233,17 @@
 									/>
 								</div>
 								<MoneyInput id="sacrifice" bind:value={plan.salarySacrifice} />
-									{#if plan.salarySurplus > 0}
-										<p class="field-note note-sm">
-											Note: your take-home less spending ({money(plan.salaryTakeHome)} − {money(
-												plan.spend
-											)}) is about <strong>{money(plan.salarySurplus)}/yr</strong>{#if plan.sacrificeRoomLeft > 0} — of that
-												<strong>{money(plan.sacrificeRoomLeft)}</strong> could be added as salary sacrifice,
-												taking your before-tax super contributions to the $30,000 yearly cap{/if}.
-										</p>
-									{/if}
+								{#if plan.salarySurplus > 0}
+									<p class="field-note note-sm">
+										Note: your take-home less spending ({money(plan.salaryTakeHome)} − {money(
+											plan.spend
+										)}) is about
+										<strong>{money(plan.salarySurplus)}/yr</strong>{#if plan.sacrificeRoomLeft > 0}
+											— of that
+											<strong>{money(plan.sacrificeRoomLeft)}</strong> could be added as salary sacrifice,
+											taking your before-tax super contributions to the $30,000 yearly cap{/if}.
+									</p>
+								{/if}
 							</div>
 							{#if plan.sacrificeOverCap}
 								<p class="warn-note">
@@ -346,7 +348,7 @@
 						<p class="field-note">
 							Savings, term deposits and investments (e.g. an index fund), each at its own return.
 							<Help
-								text="Pooled with your super and drawn down together. Set 'Taxable income' to the part of the return that's taxed each year: for a cash account that's the whole return (all interest); for a growth investment like Vanguard it's just the distribution yield (roughly 2–3%), the rest being untaxed capital growth. Your super isn't taxed. Capital gains tax on sale isn't modelled."
+								text="Drawn on only once your super runs out, and left to grow until then. The whole return is taxed each year at your marginal rate — right for a cash account (all interest), and deliberately conservative for a growth investment like Vanguard (in reality only the distributions would be taxed each year, but taxing the lot keeps it simple and never flatters the result). Your super isn't taxed; capital gains tax on sale isn't modelled."
 							/>
 						</p>
 						{#each plan.bankAccounts as account, i (account)}
@@ -374,17 +376,6 @@
 											step="0.1"
 											value={pct(account.rate)}
 											oninput={(e) => (account.rate = (Number(e.currentTarget.value) || 0) / 100)}
-										/>
-									</div>
-									<div class="field">
-										<label for={`bank-tax-${i}`}>Taxable income (% p.a.)</label>
-										<input
-											id={`bank-tax-${i}`}
-											type="number"
-											step="0.1"
-											value={pct(account.taxableRate)}
-											oninput={(e) =>
-												(account.taxableRate = (Number(e.currentTarget.value) || 0) / 100)}
 										/>
 									</div>
 								</div>

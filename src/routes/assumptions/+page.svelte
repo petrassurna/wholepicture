@@ -59,11 +59,12 @@
 				your balance is very large.
 			</li>
 			<li>
-				Bank and investment accounts are taxed each year on the taxable-income portion you set for
-				them (all of a cash account's interest; just the distribution yield of a growth investment
-				like an index fund), at your marginal rate with the Seniors and Pensioners Tax Offset
-				(SAPTO), the Low Income Tax Offset and the Medicare levy applied. Capital gains tax on sale
-				is not modelled.
+				Bank and investment accounts are taxed each year on their whole return, at your marginal
+				rate with the Seniors and Pensioners Tax Offset (SAPTO), the Low Income Tax Offset and the
+				Medicare levy applied. This is right for a cash account (all interest) and deliberately
+				conservative for a growth investment like an index fund — the whole return is taxed even
+				though only its yearly distributions really would be, which keeps it simple and never
+				flatters the result. Capital gains tax on sale is not modelled.
 			</li>
 			<li>
 				Couples are assessed as two individuals splitting assessable income 50/50, on <strong

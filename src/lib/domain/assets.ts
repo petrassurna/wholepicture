@@ -34,15 +34,12 @@ export class BankAccount implements Asset, ITaxable {
 	constructor(
 		readonly label: string,
 		readonly balance: number,
-		readonly nominalReturn: number,
-		/** Assessable yield: the share of the return taxed each year. For a cash
-		 *  account it's the whole return (all interest); for a growth investment
-		 *  (e.g. an index fund) it's just the distribution yield, the rest being
-		 *  untaxed capital growth. Defaults to the full return (cash behaviour). */
-		readonly taxableRate: number = nominalReturn
+		readonly nominalReturn: number
 	) {}
-	// Interest/distributions assessable this year = held × taxable yield.
+	// The whole return is assessable each year — conservative and simple. For a growth
+	// investment (e.g. an index fund) this over-taxes (its unrealised capital growth
+	// wouldn't really be taxed until sale), which errs the safe way; CGT isn't modelled.
 	assessableIncomeOn(held: number): number {
-		return held * this.taxableRate;
+		return held * this.nominalReturn;
 	}
 }

@@ -13,10 +13,7 @@ import {
 } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
-// `rate` is the total return; `taxableRate` is the share of that return assessed
-// for tax each year (the full return for a cash account, just the distribution
-// yield for a growth investment like an index fund).
-type BankInput = { name: string; amount: number; rate: number; taxableRate: number };
+type BankInput = { name: string; amount: number; rate: number };
 // Retirement income only — a salary paying into super is handled in the super
 // fields below, not here.
 type IncomeInput = {
@@ -160,8 +157,7 @@ class Plan {
 		return [
 			new Super(this.superBalance, this.superReturn),
 			...this.bankAccounts.map(
-				(a) =>
-					new BankAccount(a.name || 'Bank/investment account', a.amount, a.rate, a.taxableRate ?? a.rate)
+				(a) => new BankAccount(a.name || 'Bank/investment account', a.amount, a.rate)
 			)
 		];
 	}
@@ -346,8 +342,7 @@ class Plan {
 	}
 
 	addBankAccount() {
-		// Defaults to cash-account behaviour: the whole return is taxable income.
-		this.bankAccounts.push({ name: '', amount: 0, rate: 0.045, taxableRate: 0.045 });
+		this.bankAccounts.push({ name: '', amount: 0, rate: 0.045 });
 	}
 
 	removeBankAccount(i: number) {
@@ -402,15 +397,12 @@ class Plan {
 				if (Array.isArray(d.bankAccounts)) {
 					this.bankAccounts = d.bankAccounts
 						.filter(
-							(a: Partial<BankInput>) =>
-								a && typeof a.amount === 'number' && typeof a.rate === 'number'
+							(a: BankInput) => a && typeof a.amount === 'number' && typeof a.rate === 'number'
 						)
-						.map((a: Partial<BankInput>) => ({
+						.map((a: BankInput) => ({
 							name: String(a.name ?? ''),
-							amount: a.amount as number,
-							rate: a.rate as number,
-							// Pre-taxableRate saves had the whole return taxed — keep that on load.
-							taxableRate: typeof a.taxableRate === 'number' ? a.taxableRate : (a.rate as number)
+							amount: a.amount,
+							rate: a.rate
 						}));
 				}
 				if (Array.isArray(d.incomeSources)) {
