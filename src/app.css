@@ -1230,9 +1230,6 @@ h2 {
 	cursor: pointer;
 	flex-shrink: 0;
 }
-.check span {
-	margin-right: auto;
-}
 
 /* Bank accounts */
 .bank-acct {
