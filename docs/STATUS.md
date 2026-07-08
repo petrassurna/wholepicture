@@ -14,12 +14,13 @@ Last updated: 2026-07-07.
 A working, chart-first retirement model — a focused but steadily growing slice of the vision. It now spans both the accumulation years (still working, paying into super) and the drawdown years (retired, spending down), all in today's dollars.
 
 **App surface** (SvelteKit, `wholepicture/`):
-- Routes: `/` (home), `/model` (the tool), `/blog` + `/blog/[slug]` (prerendered guides), `/privacy`, `/terms`, shared `+layout.svelte` nav.
+- Routes: `/` (home), `/model` (the tool), `/blog` + `/blog/[slug]` (prerendered guides), `/assumptions` (the public "how it works & assumptions" page), `/privacy`, `/terms`, shared `+layout.svelte` nav.
 - Home: hero with a live preview chart and a **work-in-progress disclaimer popup** (once per session).
 - `/model` is the tool: collapsible sections (You / Superannuation / Spending / Bank accounts / Income / Assumptions) feeding a **pinned chart** that updates live. Includes an **"Age now"** field (drives the accumulation phase), an **"Include Age Pension"** toggle, a frequency-based **spending breakdown**, and a **"Reset all values"** button.
 - Chart: **Balance | Tax toggle** (Tax view only when there's assessable income), graded dollar axes, **hover tooltips** on both views, and a **"Retire" marker** when there's an accumulation phase.
 - **Calculations panel** under the chart: reproduces the year-by-year arithmetic with real numbers substituted (Step view) and reconciles every year against the graph (Table view) — a self-check for the engine.
 - **Blog:** four factual, education-only (ASIC-safe) articles with SEO metadata and JSON-LD, each with an auto-appended "general information, not advice" disclaimer.
+- **Analytics + feedback:** Vercel Web Analytics (page views free; custom events like `engaged` / `opened_calculations` need Vercel Pro), privacy-safe (event names only, never dollar values); a footer "Feedback" `mailto` (address in `src/lib/config.ts`).
 
 **Domain** (`src/lib/domain/`, pure / framework-free / deterministic, **88 unit tests across 8 files** including fuzz/property suites):
 - `assets.ts` — `Asset` + the `ITaxable` capability (`assessableIncomeOn`). `Super` is structurally tax-free (not `ITaxable`); `BankAccount` is taxable. `isTaxable` guard.
@@ -73,7 +74,7 @@ Process rule: **before any release, re-verify the tax and pension constants agai
 - **Age Pension v1 is the assets test only**, homeowner, single/couple. The income test + deeming and non-homeowner rules aren't modelled — for asset-rich retirees the assets test almost always binds, so this is close.
 - **No concessional-cap enforcement** — a very large "Pays into super" figure isn't capped at $30k/yr, and Division 293 for high earners isn't modelled.
 - **Minimum super drawdown not enforced.** The law forces a minimum annual withdrawal (5% at 65–74, rising to 14% at 95+). The model draws only what you need and leaves the rest compounding tax-free in super. It only diverges for big-balance / low-spend cases (forced withdrawals would move to a taxable account), and it affects *terminal wealth* via a tax drag, not *how long the money lasts*. Super **death-benefits tax** (~15–17% on benefits to non-dependents) is likewise not modelled — relevant only if terminal/estate wealth becomes a headline output.
-- **Statutory constants:** pension rates verified as at **1 July 2026** (`pension.ts`); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
+- **Statutory constants:** pension rates verified as at **1 July 2026** (`pension.ts`); the SG default is **12%** (final rate, from 1 July 2025); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
 - **Money is a raw `number`** — no `Money`/`Percent`/`Age` value objects yet (the vision/MVP called for integer-cents `Money`).
 - **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items *are* treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation; a single "spend grows above inflation" knob is the cheap future option if wanted.
 

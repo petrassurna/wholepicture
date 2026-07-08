@@ -57,7 +57,7 @@ export function taxableIncomeAt(sources: IncomeSource[], age: number, ctx?: Real
 }
 
 /** Total gross super contributions at an age — the `superRate` share of each
- *  toSuper source (e.g. 11.5% SG on a salary). Contributions tax is applied later. */
+ *  toSuper source (e.g. 12% SG on a salary). Contributions tax is applied later. */
 export function contributionsAt(sources: IncomeSource[], age: number, ctx?: RealCtx): number {
 	return sources.reduce((sum, s) => (s.toSuper ? sum + s.grossAt(age, ctx) * s.superRate : sum), 0);
 }

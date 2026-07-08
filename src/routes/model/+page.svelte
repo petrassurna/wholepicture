@@ -380,7 +380,7 @@
 										<input type="checkbox" bind:checked={inc.toSuper} />
 										<span>Pays into super</span>
 										<Help
-											text="Tick if this is a salary you're still earning, and only part of it goes into super — the employer contribution (SG, currently 11.5%) plus any salary sacrifice. Set the percentage below. That share is added to super over the years shown (less the 15% contributions tax); the rest of the salary is your living money and isn't modelled. Useful for the years before retirement."
+											text="Tick if this is a salary you're still earning, and only part of it goes into super — the employer contribution (SG, currently 12%) plus any salary sacrifice. Set the percentage below. That share is added to super over the years shown (less the 15% contributions tax); the rest of the salary is your living money and isn't modelled. Useful for the years before retirement."
 										/>
 									</label>
 									{#if inc.toSuper}
@@ -388,7 +388,7 @@
 											<div class="field-head">
 												<label for={`inc-superpct-${i}`}>% of salary into super</label>
 												<Help
-													text="The employer SG is 11.5% (rising to 12%). Add any salary sacrifice on top — e.g. 11.5% + a 5% sacrifice = 16.5%."
+													text="The employer SG is 12%. Add any salary sacrifice on top — e.g. 12% + a 5% sacrifice = 17%."
 												/>
 											</div>
 											<input

@@ -16,7 +16,7 @@ type IncomeInput = {
 	toAge: number;
 	indexed: boolean;
 	toSuper: boolean;
-	superRate: number; // fraction of the amount paid into super (SG default 0.115)
+	superRate: number; // fraction of the amount paid into super (SG default 0.12)
 };
 
 // How often a spending amount recurs, and how many times a year that is.
@@ -160,7 +160,7 @@ class Plan {
 					true,
 					s.indexed ?? true,
 					s.toSuper ?? false,
-					s.superRate ?? 0.115
+					s.superRate ?? 0.12
 				)
 		);
 	}
@@ -276,7 +276,7 @@ class Plan {
 			toAge: this.retireAge + 5,
 			indexed: true,
 			toSuper: false,
-			superRate: 0.115
+			superRate: 0.12
 		});
 	}
 
@@ -337,7 +337,7 @@ class Plan {
 							toAge: s.toAge,
 							indexed: typeof s.indexed === 'boolean' ? s.indexed : true,
 							toSuper: typeof s.toSuper === 'boolean' ? s.toSuper : false,
-							superRate: typeof s.superRate === 'number' ? s.superRate : 0.115
+							superRate: typeof s.superRate === 'number' ? s.superRate : 0.12
 						}));
 				}
 				if (Array.isArray(d.spendItems)) {
