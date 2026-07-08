@@ -41,7 +41,7 @@
 		<ul>
 			<li>Super pension income from age 60, and super fund earnings in the pension phase, are treated as tax-free.</li>
 			<li>Only super up to the transfer balance cap (about $1.9 million) can sit in the tax-free pension phase; the tool treats <em>all</em> your super as tax-free, so it may be optimistic if your balance is very large.</li>
-			<li>Bank and term-deposit interest is taxed at your marginal rate, with the Seniors and Pensioners Tax Offset (SAPTO), the Low Income Tax Offset and the Medicare levy applied.</li>
+			<li>Bank and investment accounts are taxed each year on the taxable-income portion you set for them (all of a cash account's interest; just the distribution yield of a growth investment like an index fund), at your marginal rate with the Seniors and Pensioners Tax Offset (SAPTO), the Low Income Tax Offset and the Medicare levy applied. Capital gains tax on sale is not modelled.</li>
 			<li>Couples are assessed as two individuals splitting assessable income 50/50, on <strong>one shared timeline</strong> — the same ages, retiring together. Different ages, and the survivor case when one partner dies (spending drops, and the pension moves to the single rate), are not modelled.</li>
 			<li>Tax rates use the {taxYear} resident scale. Rates change each year and are treated as an estimate; per-item deductions and every individual circumstance are not modelled.</li>
 		</ul>

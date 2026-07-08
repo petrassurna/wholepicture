@@ -338,15 +338,15 @@
 			<!-- BANK ACCOUNTS -->
 			<section class="acc">
 				<button class="acc-head" aria-expanded={open.bank} onclick={() => (open.bank = !open.bank)}>
-					<span>Bank accounts</span>
+					<span>Bank/investment accounts</span>
 					<span class="acc-chev" class:open={open.bank}>›</span>
 				</button>
 				{#if open.bank}
 					<div class="acc-body">
 						<p class="field-note">
-							Savings and term deposits, each at its own rate.
+							Savings, term deposits and investments (e.g. an index fund), each at its own return.
 							<Help
-								text="Pooled with your super and drawn down together. Interest is taxed; your super isn't. Maturity dates don't affect a long-term projection, so they aren't needed."
+								text="Pooled with your super and drawn down together. Set 'Taxable income' to the part of the return that's taxed each year: for a cash account that's the whole return (all interest); for a growth investment like Vanguard it's just the distribution yield (roughly 2–3%), the rest being untaxed capital growth. Your super isn't taxed. Capital gains tax on sale isn't modelled."
 							/>
 						</p>
 						{#each plan.bankAccounts as account, i (account)}
@@ -356,7 +356,7 @@
 										class="bank-name"
 										type="text"
 										aria-label="Account name"
-										placeholder="Account name (e.g. term deposit)"
+										placeholder="Account name (e.g. Vanguard, term deposit)"
 										bind:value={account.name}
 									/>
 									<RemoveButton label="Remove account" onclick={() => plan.removeBankAccount(i)} />
@@ -367,13 +367,24 @@
 										<MoneyInput id={`bank-amt-${i}`} bind:value={account.amount} />
 									</div>
 									<div class="field">
-										<label for={`bank-rate-${i}`}>Rate (% p.a.)</label>
+										<label for={`bank-rate-${i}`}>Return (% p.a.)</label>
 										<input
 											id={`bank-rate-${i}`}
 											type="number"
 											step="0.1"
 											value={pct(account.rate)}
 											oninput={(e) => (account.rate = (Number(e.currentTarget.value) || 0) / 100)}
+										/>
+									</div>
+									<div class="field">
+										<label for={`bank-tax-${i}`}>Taxable income (% p.a.)</label>
+										<input
+											id={`bank-tax-${i}`}
+											type="number"
+											step="0.1"
+											value={pct(account.taxableRate)}
+											oninput={(e) =>
+												(account.taxableRate = (Number(e.currentTarget.value) || 0) / 100)}
 										/>
 									</div>
 								</div>
@@ -487,7 +498,7 @@
 						<p class="field-note">
 							Tax is worked out for you each year — your super pension isn't taxed.
 							<Help
-								text="Calculated from your assessable income (bank interest plus any taxable income like rent or part-time work) using current resident rates — marginal brackets, SAPTO, LITO and the Medicare levy. Super pension income is tax-free, so it's never taxed. Many retirees pay little or nothing."
+								text="Calculated from your assessable income (the taxable income from your bank/investment accounts plus any taxable income like rent or part-time work) using current resident rates — marginal brackets, SAPTO, LITO and the Medicare levy. Super pension income is tax-free, so it's never taxed. Many retirees pay little or nothing."
 							/>
 						</p>
 						<div class="field">

@@ -42,6 +42,7 @@ const ACCUMULATION_EARNINGS_TAX = 0.15;
 export interface Point {
 	age: number;
 	balance: number; // total portfolio, today's dollars
+	balances: number[]; // per-asset opening balances this year (aligned to `assets`)
 	tax: number; // tax paid that year
 	assessableIncome: number; // investment interest + taxable income that year
 }
@@ -101,7 +102,7 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 
 		// --- Accumulation phase: still working, paying into super, not drawing ---
 		if (age < retireAge) {
-			points.push({ age, balance: Math.max(0, opening), tax: 0, assessableIncome: 0 });
+			points.push({ age, balance: Math.max(0, opening), balances: bals.slice(), tax: 0, assessableIncome: 0 });
 			bals[superIdx] += contributionAt(age);
 			for (let i = 0; i < bals.length; i++) bals[i] *= 1 + growthAccum[i];
 			continue;
@@ -120,6 +121,7 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 		points.push({
 			age,
 			balance: Math.max(0, opening),
+			balances: bals.slice(),
 			tax,
 			assessableIncome: assetAssessable + inc.taxable
 		});

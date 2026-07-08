@@ -34,10 +34,15 @@ export class BankAccount implements Asset, ITaxable {
 	constructor(
 		readonly label: string,
 		readonly balance: number,
-		readonly nominalReturn: number
+		readonly nominalReturn: number,
+		/** Assessable yield: the share of the return taxed each year. For a cash
+		 *  account it's the whole return (all interest); for a growth investment
+		 *  (e.g. an index fund) it's just the distribution yield, the rest being
+		 *  untaxed capital growth. Defaults to the full return (cash behaviour). */
+		readonly taxableRate: number = nominalReturn
 	) {}
-	// A bank account's whole return is assessable interest.
+	// Interest/distributions assessable this year = held × taxable yield.
 	assessableIncomeOn(held: number): number {
-		return held * this.nominalReturn;
+		return held * this.taxableRate;
 	}
 }

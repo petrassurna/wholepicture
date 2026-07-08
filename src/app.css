@@ -68,7 +68,7 @@ a {
 	font-weight: 600;
 	color: var(--muted);
 }
-.links a:hover {
+.links a:not(.btn):hover {
 	color: var(--navy);
 }
 
@@ -692,6 +692,13 @@ h2 {
 	font-weight: 700;
 	font-size: 15px;
 }
+/* Stacked sub-lines within one step (e.g. each income source on its own line). */
+.calc-steps code.calc-line {
+	display: block;
+}
+.calc-steps code.calc-line + code.calc-line {
+	margin-top: 4px;
+}
 .calc-check {
 	margin: 12px 0 0;
 	font-size: 12.5px;
@@ -741,6 +748,46 @@ h2 {
 }
 .calc-tick.ok {
 	color: #2e7d5b;
+}
+/* Per-account breakdown inside one step (multi-asset growth). */
+.calc-subtable-wrap {
+	overflow-x: auto;
+	margin-top: 6px;
+}
+.calc-subtable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12.5px;
+	font-variant-numeric: tabular-nums;
+}
+.calc-subtable th {
+	text-align: right;
+	font-weight: 600;
+	color: var(--muted);
+	padding: 4px 8px;
+	border-bottom: 1px solid var(--line);
+	white-space: nowrap;
+}
+.calc-subtable th:first-child {
+	text-align: left;
+}
+.calc-subtable td {
+	text-align: right;
+	padding: 4px 8px;
+	color: var(--navy);
+	border-bottom: 1px solid #eef1f4;
+	white-space: nowrap;
+	font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+.calc-subtable td:first-child {
+	text-align: left;
+	color: var(--muted);
+	font-family: inherit;
+}
+.calc-subtable .calc-subtotal td {
+	font-weight: 700;
+	border-bottom: none;
+	border-top: 1px solid var(--line);
 }
 
 /* Blog — index */
@@ -1282,7 +1329,7 @@ h2 {
 }
 .bank-fields {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 	gap: 12px;
 }
 .income-body {

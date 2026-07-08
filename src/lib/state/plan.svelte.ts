@@ -13,7 +13,10 @@ import {
 } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
-type BankInput = { name: string; amount: number; rate: number };
+// `rate` is the total return; `taxableRate` is the share of that return assessed
+// for tax each year (the full return for a cash account, just the distribution
+// yield for a growth investment like an index fund).
+type BankInput = { name: string; amount: number; rate: number; taxableRate: number };
 // Retirement income only — a salary paying into super is handled in the super
 // fields below, not here.
 type IncomeInput = {
@@ -156,7 +159,10 @@ class Plan {
 	get assets(): Asset[] {
 		return [
 			new Super(this.superBalance, this.superReturn),
-			...this.bankAccounts.map((a) => new BankAccount(a.name || 'Bank account', a.amount, a.rate))
+			...this.bankAccounts.map(
+				(a) =>
+					new BankAccount(a.name || 'Bank/investment account', a.amount, a.rate, a.taxableRate ?? a.rate)
+			)
 		];
 	}
 
@@ -340,7 +346,8 @@ class Plan {
 	}
 
 	addBankAccount() {
-		this.bankAccounts.push({ name: '', amount: 0, rate: 0.045 });
+		// Defaults to cash-account behaviour: the whole return is taxable income.
+		this.bankAccounts.push({ name: '', amount: 0, rate: 0.045, taxableRate: 0.045 });
 	}
 
 	removeBankAccount(i: number) {
@@ -395,12 +402,15 @@ class Plan {
 				if (Array.isArray(d.bankAccounts)) {
 					this.bankAccounts = d.bankAccounts
 						.filter(
-							(a: BankInput) => a && typeof a.amount === 'number' && typeof a.rate === 'number'
+							(a: Partial<BankInput>) =>
+								a && typeof a.amount === 'number' && typeof a.rate === 'number'
 						)
-						.map((a: BankInput) => ({
+						.map((a: Partial<BankInput>) => ({
 							name: String(a.name ?? ''),
-							amount: a.amount,
-							rate: a.rate
+							amount: a.amount as number,
+							rate: a.rate as number,
+							// Pre-taxableRate saves had the whole return taxed — keep that on load.
+							taxableRate: typeof a.taxableRate === 'number' ? a.taxableRate : (a.rate as number)
 						}));
 				}
 				if (Array.isArray(d.incomeSources)) {
