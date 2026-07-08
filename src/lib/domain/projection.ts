@@ -1,8 +1,10 @@
 // Pure projection engine — no UI, no framework, deterministic.
 // It evolves a PORTFOLIO of assets year by year: each asset grows at its own
-// return and is drawn down pro-rata, taxable assets report their assessable
-// income (see assets.ts / ITaxable), and tax on the year's assessable income is
-// an explicit outflow (see household.ts). Assets are immutable definitions; the
+// return, spending is drawn from super first (other accounts only once super is
+// gone), super pays at least the ATO minimum drawdown with any forced excess set
+// aside in a non-growing bucket, taxable assets report their assessable income
+// (see assets.ts / ITaxable), and tax on the year's assessable income is an
+// explicit outflow (see household.ts). Assets are immutable definitions; the
 // engine owns the mutable balances.
 //
 // Tax convention: assessable investment income is NOMINAL interest (balance ×
@@ -13,6 +15,7 @@
 
 import type { Asset } from './assets';
 import { isTaxable } from './assets';
+import { minDrawdownRate } from './drawdown';
 
 export type Scenario = 'average' | 'bad';
 
@@ -45,12 +48,14 @@ export interface Point {
 	balances: number[]; // per-asset opening balances this year (aligned to `assets`)
 	tax: number; // tax paid that year
 	assessableIncome: number; // investment interest + taxable income that year
+	setAside: number; // running "set aside" bucket — forced drawdown you didn't spend
 }
 
 export interface Projection {
 	points: Point[];
 	runsOutAge: number | null;
 	totalTax: number;
+	totalSetAside: number; // final set-aside bucket over the plan
 }
 
 /** Real return (today's dollars) from a nominal return and inflation. */
@@ -58,15 +63,22 @@ export function realReturn(nominal: number, inflation: number): number {
 	return (1 + nominal) / (1 + inflation) - 1;
 }
 
-/** Withdraw `net` from the balances pro-rata (negative `net` reinvests a surplus). */
-function drawPro(bals: number[], net: number): void {
-	const pos = bals.map((b) => Math.max(0, b));
-	const total = pos.reduce((s, b) => s + b, 0);
+/**
+ * Spread `net` (>= 0) across the NON-super accounts pro-rata by their positive
+ * share — used only once super itself can't cover the year's need (a last resort,
+ * so in a normal year these accounts are left to just grow). Parks any residual on
+ * super if there's nothing else, which tips the plan into "runs out". `superIdx` is
+ * super's slot.
+ */
+function drawFromOthers(bals: number[], net: number, superIdx: number): void {
+	if (net <= 0) return;
+	const others = bals.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
+	const total = others.reduce((s, b) => s + b, 0);
 	if (total <= 0) {
-		bals[0] -= net; // nothing to spread across; park it on the first asset
+		bals[superIdx] -= net; // nothing left anywhere; park it on super (→ runs out)
 		return;
 	}
-	for (let i = 0; i < bals.length; i++) bals[i] -= net * (pos[i] / total);
+	for (let i = 0; i < bals.length; i++) bals[i] -= net * (others[i] / total);
 }
 
 export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Projection {
@@ -79,7 +91,10 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 	// retirement is already past just draws down from now.
 	const retireAge = Math.max(a.retireAge ?? a.startAge, a.startAge);
 	// Contributions land in super — the first non-taxable asset (or the first asset).
-	const superIdx = Math.max(0, assets.findIndex((x) => !isTaxable(x)));
+	const superIdx = Math.max(
+		0,
+		assets.findIndex((x) => !isTaxable(x))
+	);
 
 	const bals = assets.map((x) => x.balance);
 	// Drawdown-phase real growth (super tax-free); accumulation-phase growth carries
@@ -96,13 +111,21 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 	const points: Point[] = [];
 	let runsOutAge: number | null = null;
 	let totalTax = 0;
+	let setAside = 0; // forced minimum drawdown you didn't spend — accumulates, no growth
 
 	for (let age = a.startAge; age <= a.endAge; age++) {
 		const opening = bals.reduce((s, b) => s + Math.max(0, b), 0);
 
 		// --- Accumulation phase: still working, paying into super, not drawing ---
 		if (age < retireAge) {
-			points.push({ age, balance: Math.max(0, opening), balances: bals.slice(), tax: 0, assessableIncome: 0 });
+			points.push({
+				age,
+				balance: Math.max(0, opening),
+				balances: bals.slice(),
+				tax: 0,
+				assessableIncome: 0,
+				setAside
+			});
 			bals[superIdx] += contributionAt(age);
 			for (let i = 0; i < bals.length; i++) bals[i] *= 1 + growthAccum[i];
 			continue;
@@ -118,12 +141,35 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 		const inc = incomeAt(age);
 		const tax = taxOn(assetAssessable, age);
 
+		// Work out the year's super withdrawal before recording the point, so the
+		// running set-aside bucket shown at this age includes it.
+		let superWithdrawal = 0;
+		let fromOthers = 0;
+		if (opening > 0) {
+			// Tax-free Age Pension, from the opening financial assets — a means-tested
+			// income that rises as the portfolio falls, so it offsets the draw.
+			const pension = pensionAt(opening, age);
+			// Net cash the portfolio must cover, floored at zero: in a surplus year
+			// (income + pension cover spending + tax) nothing is needed and a plain
+			// income surplus isn't saved — deliberately conservative.
+			const need = Math.max(0, a.spend + tax - inc.gross - pension);
+			// Super must pay at least the ATO minimum drawdown for the age. Whatever that
+			// forces out beyond what's needed to spend is set aside (not re-spent).
+			const superBal = Math.max(0, bals[superIdx]);
+			const needFromSuper = Math.min(need, superBal);
+			const minWithdrawal = minDrawdownRate(age) * superBal;
+			superWithdrawal = Math.min(superBal, Math.max(needFromSuper, minWithdrawal));
+			setAside += superWithdrawal - needFromSuper;
+			fromOthers = need - needFromSuper; // super couldn't cover it all → rest from the others
+		}
+
 		points.push({
 			age,
 			balance: Math.max(0, opening),
 			balances: bals.slice(),
 			tax,
-			assessableIncome: assetAssessable + inc.taxable
+			assessableIncome: assetAssessable + inc.taxable,
+			setAside
 		});
 
 		if (opening <= 0) {
@@ -132,12 +178,8 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 		}
 		totalTax += tax;
 
-		// Tax-free Age Pension for the year, from the opening financial assets — a
-		// means-tested income that rises as the portfolio falls, so it offsets the draw.
-		const pension = pensionAt(opening, age);
-
-		// Net cash drawn from the portfolio: spending plus tax, less income and pension.
-		drawPro(bals, a.spend + tax - inc.gross - pension);
+		bals[superIdx] -= superWithdrawal;
+		drawFromOthers(bals, fromOthers, superIdx);
 
 		if (bals.reduce((s, b) => s + b, 0) <= 0) {
 			bals.fill(0);
@@ -158,5 +200,5 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 		}
 	}
 
-	return { points, runsOutAge, totalTax };
+	return { points, runsOutAge, totalTax, totalSetAside: setAside };
 }

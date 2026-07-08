@@ -45,13 +45,23 @@ describe('taxable income is actually taxed', () => {
 	const assets = [new Super(500_000, 0.07)];
 
 	it('taxable income incurs tax and ends poorer than the same tax-free income', () => {
-		const taxable = run(assets, new Household('single', [new IncomeSource('rent', 40_000, 67, 95, true)]));
-		const free = run(assets, new Household('single', [new IncomeSource('gift', 40_000, 67, 95, false)]));
+		const taxable = run(
+			assets,
+			new Household('single', [new IncomeSource('rent', 40_000, 67, 95, true)])
+		);
+		const free = run(
+			assets,
+			new Household('single', [new IncomeSource('gift', 40_000, 67, 95, false)])
+		);
 
 		expect(taxable.totalTax).toBeGreaterThan(0);
 		expect(free.totalTax).toBe(0);
-		// Same gross income, but tax on the taxable one leaves a smaller pot.
-		expect(bal(taxable, 95)).toBeLessThan(bal(free, 95));
+		// Same gross income, but tax on the taxable one leaves less total wealth. (With
+		// the minimum drawdown, the tax difference can surface in the set-aside bucket
+		// rather than the invested balance, so compare balance + bucket.)
+		expect(bal(taxable, 95) + taxable.totalSetAside).toBeLessThan(
+			bal(free, 95) + free.totalSetAside
+		);
 	});
 });
 
@@ -86,7 +96,10 @@ describe('income extends longevity end-to-end', () => {
 
 	it('early-retirement income makes the money last longer', () => {
 		const none = run(assets, new Household('single', []));
-		const withInc = run(assets, new Household('single', [new IncomeSource('work', 25_000, 67, 71, true)]));
+		const withInc = run(
+			assets,
+			new Household('single', [new IncomeSource('work', 25_000, 67, 71, true)])
+		);
 		expect(lastsPast(withInc)).toBeGreaterThan(lastsPast(none));
 	});
 });

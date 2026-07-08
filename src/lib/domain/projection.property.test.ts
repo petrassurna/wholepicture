@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { project, realReturn, type Assumptions, type Scenario } from './projection';
-import { Super, BankAccount, type Asset } from './assets';
+import { Super, BankAccount, isTaxable, type Asset } from './assets';
 import { Household } from './household';
 import { IncomeSource } from './income';
+import { minDrawdownRate } from './drawdown';
 
 // Property / fuzz tests for the projection engine over thousands of random plans.
 // Three angles:
@@ -11,7 +12,7 @@ import { IncomeSource } from './income';
 //   2. Monotonicity — more spend never lasts longer, more balance never lasts
 //      shorter, the bad case never beats the average, tax never extends longevity.
 //   3. An INDEPENDENTLY written simulator (no-tax path) checked point-by-point,
-//      validating growth, pro-rata drawdown, and the crash/recovery mechanics.
+//      validating growth, super-first drawdown, and the crash/recovery mechanics.
 
 function rng(seed: number) {
 	return () => {
@@ -62,11 +63,24 @@ function simulate(assets: Asset[], a: Assumptions, scenario: Scenario) {
 			runsOutAge ??= age;
 			continue;
 		}
-		// withdraw `spend` pro-rata across positive balances
-		const pos = bal.map((b) => Math.max(0, b));
-		const tot = pos.reduce((s, b) => s + b, 0);
-		if (tot <= 0) bal[0] -= a.spend;
-		else for (let i = 0; i < bal.length; i++) bal[i] -= a.spend * (pos[i] / tot);
+		// withdraw `spend` from super first; super pays at least the ATO minimum
+		// drawdown (the forced excess just leaves super), then overflow to the rest
+		const superIdx = Math.max(
+			0,
+			assets.findIndex((x) => !isTaxable(x))
+		);
+		const superBal = Math.max(0, bal[superIdx]);
+		const needFromSuper = Math.min(a.spend, superBal);
+		const minW = minDrawdownRate(age) * superBal;
+		const superW = Math.min(superBal, Math.max(needFromSuper, minW));
+		bal[superIdx] -= superW;
+		const remainder = a.spend - needFromSuper;
+		if (remainder > 0) {
+			const others = bal.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
+			const tot = others.reduce((s, b) => s + b, 0);
+			if (tot <= 0) bal[superIdx] -= remainder;
+			else for (let i = 0; i < bal.length; i++) bal[i] -= remainder * (others[i] / tot);
+		}
 		if (bal.reduce((s, b) => s + b, 0) <= 0) {
 			bal.fill(0);
 			runsOutAge ??= age;
@@ -207,7 +221,12 @@ describe('project — tax always costs, never helps', () => {
 				'average'
 			);
 			const free = project([new Super(superBal + otherBal, rate)], withTax, 'average');
-			expect(longevity(taxable)).toBeLessThanOrEqual(longevity(free));
+			// Only compare where the minimum drawdown never forces excess out: when it does,
+			// money is set aside in a NON-growing, unspent bucket, and the all-super plan
+			// (bigger super → bigger forced drawdown) parks more there, which can
+			// legitimately shorten longevity vs the split plan.
+			if (taxable.totalSetAside === 0 && free.totalSetAside === 0)
+				expect(longevity(taxable)).toBeLessThanOrEqual(longevity(free));
 		}
 	});
 });
@@ -331,7 +350,15 @@ describe('project — accumulation phase (pre-retirement)', () => {
 		// inflation. Accumulation real growth = (1 + 0.07×0.85)/(1 + 0.025) − 1.
 		const p = project(
 			[new Super(100_000, 0.07)],
-			{ startAge: 57, retireAge: 67, endAge: 90, spend: 50_000, inflation: 0.025, downturn: 0.3, recoveryYears: 5 },
+			{
+				startAge: 57,
+				retireAge: 67,
+				endAge: 90,
+				spend: 50_000,
+				inflation: 0.025,
+				downturn: 0.3,
+				recoveryYears: 5
+			},
 			'average'
 		);
 		const expected = 100_000 * ((1 + 0.07 * 0.85) / 1.025);
@@ -343,7 +370,15 @@ describe('project — accumulation phase (pre-retirement)', () => {
 	it('does not draw down or run out during accumulation', () => {
 		const p = project(
 			[new Super(200_000, 0.06)],
-			{ startAge: 55, retireAge: 67, endAge: 90, spend: 80_000, inflation: 0.025, downturn: 0.3, recoveryYears: 5 },
+			{
+				startAge: 55,
+				retireAge: 67,
+				endAge: 90,
+				spend: 80_000,
+				inflation: 0.025,
+				downturn: 0.3,
+				recoveryYears: 5
+			},
 			'average'
 		);
 		// Balance only grows up to retirement despite the big retirement spend.
@@ -387,8 +422,9 @@ describe('project — accumulation phase (pre-retirement)', () => {
 
 describe('project — the super-only hand-calc reconciles every year (calc panel fidelity)', () => {
 	// Mirrors what the Calculations panel shows: for a super-only, retired, no-tax,
-	// no-income, no-pension plan, closing = (opening − spend) × (1 + real return)
-	// must land on the engine's next-year balance for EVERY year and both scenarios.
+	// no-income, no-pension plan, super withdraws max(spend, ATO minimum drawdown),
+	// so closing = (opening − that withdrawal) × (1 + real return) must land on the
+	// engine's next-year balance for EVERY year and both scenarios.
 	const rand = rng(17);
 	it('closing = (opening − spend) × (1 + growth) matches the engine across 1000 plans', () => {
 		for (let i = 0; i < 1000; i++) {
@@ -419,7 +455,10 @@ describe('project — the super-only hand-calc reconciles every year (calc panel
 						if (t === 0) g = -downturn;
 						else if (t <= recoveryYears) g = recovery;
 					}
-					const closing = (pt.balance - a.spend) * (1 + g);
+					const need = Math.min(a.spend, pt.balance);
+					const minW = minDrawdownRate(pt.age) * pt.balance;
+					const superW = Math.min(pt.balance, Math.max(need, minW));
+					const closing = (pt.balance - superW) * (1 + g);
 					const engineNext = p.points[k + 1].balance;
 					if (closing <= 0) continue; // run-out year: engine clamps to 0
 					expect(near(closing, engineNext, 1e-9)).toBe(true);

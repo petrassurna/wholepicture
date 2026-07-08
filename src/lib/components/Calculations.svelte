@@ -5,6 +5,7 @@
 	import { plan } from '$lib/state/plan.svelte';
 	import { trackEvent } from '$lib/analytics';
 	import { taxOwed, type Filing } from '$lib/domain/tax';
+	import { minDrawdownRate } from '$lib/domain/drawdown';
 
 	const pensionAsAt = CURRENT_PENSION.asAt;
 
@@ -125,6 +126,9 @@
 		pensionEq: string;
 		contribution: number;
 		contributionEq: string;
+		setAsideThisYear: number; // forced out by the minimum drawdown, not spent
+		setAsideTotal: number; // running set-aside bucket at this age
+		minDrawEq: string; // '' unless the minimum drawdown forced something aside
 		afterCashflow: number;
 		cashflowEq: string;
 		closing: number;
@@ -153,7 +157,13 @@
 			const rows: AssetRow[] = assets.map((asset, i) => {
 				const g = realReturn(asset.nominalReturn * 0.85, I); // 15% earnings tax while working
 				const after = openings[i] + (i === 0 ? contribution : 0);
-				return { label: asset.label, opening: openings[i], afterCashflow: after, growth: g, closing: after * (1 + g) };
+				return {
+					label: asset.label,
+					opening: openings[i],
+					afterCashflow: after,
+					growth: g,
+					closing: after * (1 + g)
+				};
 			});
 			const afterCashflow = rows.reduce((s, r) => s + r.afterCashflow, 0);
 			const closing = rows.reduce((s, r) => s + r.closing, 0);
@@ -200,6 +210,9 @@
 				pensionEq: '',
 				contribution,
 				contributionEq,
+				setAsideThisYear: 0,
+				setAsideTotal: pt.setAside,
+				minDrawEq: '',
 				afterCashflow,
 				cashflowEq,
 				closing,
@@ -230,7 +243,8 @@
 				investParts.push(`${asset.label}: ${num(openings[i])} × ${pctStr(rate)} = ${num(earned)}`);
 			}
 		});
-		if (taxableAccounts > 1) investParts.push(`total taxable income from accounts ${num(assetAssessable)}`);
+		if (taxableAccounts > 1)
+			investParts.push(`total taxable income from accounts ${num(assetAssessable)}`);
 
 		const incomeAt = plan.incomeAt(A);
 		const income = incomeAt.gross;
@@ -275,19 +289,56 @@
 			}
 		}
 
-		// Net cash drawn from the portfolio, spread pro-rata across accounts by balance
-		// (matches drawPro in the engine); each account then grows at its own return.
-		const netDraw = plan.spend + tax - income - pension;
-		const afterCashflow = opening - netDraw;
-		const uniformGrowth =
-			assets.length === 1 || (scenario === 'bad' && t <= plan.recoveryYears);
+		// Cash the portfolio must fund, floored at zero (a plain income surplus isn't
+		// saved — conservative). Super pays at least its ATO minimum drawdown; anything
+		// that forces out beyond what's needed is set aside in a non-growing bucket.
+		// The draw comes from super first, other accounts only once super is exhausted —
+		// mirrors the engine, so in a normal year non-super accounts just grow.
+		const rawNet = plan.spend + tax - income - pension;
+		const need = Math.max(0, rawNet);
+		const superBal = openings[0];
+		const needFromSuper = Math.min(need, superBal);
+		const minRate = minDrawdownRate(A);
+		const minW = minRate * superBal;
+		const superWithdrawal = Math.min(superBal, Math.max(needFromSuper, minW));
+		const setAsideThisYear = superWithdrawal - needFromSuper;
+		const setAsideTotal = pt.setAside;
+
+		const draws = openings.map(() => 0);
+		draws[0] = superWithdrawal;
+		const remainder = need - needFromSuper;
+		if (remainder > 0) {
+			const others = openings.map((o, i) => (i === 0 ? 0 : o));
+			const otherTotal = others.reduce((s, b) => s + b, 0);
+			if (otherTotal > 0) {
+				openings.forEach((_, i) => {
+					if (i !== 0) draws[i] = remainder * (others[i] / otherTotal);
+				});
+			} else {
+				draws[0] += remainder;
+			}
+		}
+		const afterCashflow = openings.reduce((s, o, i) => s + (o - draws[i]), 0);
+		const surplus = rawNet < 0;
+
+		const minDrawEq =
+			setAsideThisYear > 0.5
+				? `${pctStr(minRate)} × ${num(superBal)} = ${num(minW)} minimum vs ${num(needFromSuper)} needed for spending → ${num(setAsideThisYear)} set aside (bucket now ${num(setAsideTotal)})`
+				: '';
+
+		const uniformGrowth = assets.length === 1 || (scenario === 'bad' && t <= plan.recoveryYears);
 		const rows: AssetRow[] = assets.map((asset, i) => {
 			let g = realReturn(asset.nominalReturn, I);
 			if (scenario === 'bad' && t === 0) g = -plan.downturn;
 			else if (scenario === 'bad' && t <= plan.recoveryYears) g = recoveryReturn;
-			const draw = opening > 0 ? netDraw * (openings[i] / opening) : i === 0 ? netDraw : 0;
-			const after = openings[i] - draw;
-			return { label: asset.label, opening: openings[i], afterCashflow: after, growth: g, closing: after * (1 + g) };
+			const after = openings[i] - draws[i];
+			return {
+				label: asset.label,
+				opening: openings[i],
+				afterCashflow: after,
+				growth: g,
+				closing: after * (1 + g)
+			};
 		});
 		const closing = rows.reduce((s, r) => s + r.closing, 0);
 		const growth = afterCashflow !== 0 ? closing / afterCashflow - 1 : (rows[0]?.growth ?? 0);
@@ -304,11 +355,25 @@
 			growthEq = `(1 ÷ (1 − ${dec(plan.downturn)}))^(1 ÷ ${plan.recoveryYears}) − 1 = ${pctStr(growth)}`;
 		}
 
-		const parts = [num(opening), `− ${num(plan.spend)}`];
-		if (tax > 0.5) parts.push(`− ${num(tax)}`);
-		if (income > 0.5) parts.push(`+ ${num(income)}`);
-		if (pension > 0.5) parts.push(`+ ${num(pension)}`);
-		const cashflowEq = `${parts.join(' ')} = ${num(afterCashflow)}`;
+		let cashflowEq: string;
+		if (surplus) {
+			const inParts = [`income ${num(income)}`];
+			if (pension > 0.5) inParts.push(`pension ${num(pension)}`);
+			const outParts = [`spending ${num(plan.spend)}`];
+			if (tax > 0.5) outParts.push(`tax ${num(tax)}`);
+			const covers = `${inParts.join(' + ')} cover ${outParts.join(' + ')}`;
+			cashflowEq =
+				setAsideThisYear > 0.5
+					? `${covers}; the minimum drawdown forces ${num(setAsideThisYear)} out, set aside → ${num(opening)} − ${num(setAsideThisYear)} = ${num(afterCashflow)}`
+					: `${covers} — nothing drawn (surplus not saved), balance unchanged at ${num(afterCashflow)}`;
+		} else {
+			const parts = [num(opening), `− ${num(plan.spend)}`];
+			if (tax > 0.5) parts.push(`− ${num(tax)}`);
+			if (income > 0.5) parts.push(`+ ${num(income)}`);
+			if (pension > 0.5) parts.push(`+ ${num(pension)}`);
+			if (setAsideThisYear > 0.5) parts.push(`− ${num(setAsideThisYear)} (set aside)`);
+			cashflowEq = `${parts.join(' ')} = ${num(afterCashflow)}`;
+		}
 
 		const matches = graphNext !== null && Math.abs(closing - graphNext) < 1;
 
@@ -333,6 +398,9 @@
 			pensionEq,
 			contribution: 0,
 			contributionEq: '',
+			setAsideThisYear,
+			setAsideTotal,
+			minDrawEq,
 			afterCashflow,
 			cashflowEq,
 			closing,
@@ -422,7 +490,9 @@
 					</li>
 					{#if calc.contributionEq}
 						<li>
-							<span class="calc-label">Super contribution this year (salary × rate, less 15% tax)</span>
+							<span class="calc-label"
+								>Super contribution this year (salary × rate, less 15% tax)</span
+							>
 							<code>{calc.contributionEq}</code>
 						</li>
 					{/if}
@@ -457,9 +527,18 @@
 						<li>
 							<span class="calc-label"
 								>Age Pension for the year (assets &amp; income test, lower applies · rates as at
-									{pensionAsAt}; estimate only)</span
+								{pensionAsAt}; estimate only)</span
 							>
 							<code>{calc.pensionEq}</code>
+						</li>
+					{/if}
+					{#if calc.minDrawEq}
+						<li>
+							<span class="calc-label"
+								>Minimum drawdown — super must pay out its ATO minimum; whatever that forces out
+								beyond your spending is set aside (a non-growing bucket, not re-spent)</span
+							>
+							<code>{calc.minDrawEq}</code>
 						</li>
 					{/if}
 					<li>
@@ -467,10 +546,9 @@
 							<span class="calc-label">Balance after this year's contribution</span>
 						{:else}
 							<span class="calc-label">
-								Balance after the year's cash flow (spending{calc.tax > 0.5 ? ', tax' : ''}{calc.income >
-								0.5
-									? ', income'
-									: ''}{calc.pension > 0.5 ? ', pension' : ''})
+								Balance after the year's cash flow (spending{calc.tax > 0.5
+									? ', tax'
+									: ''}{calc.income > 0.5 ? ', income' : ''}{calc.pension > 0.5 ? ', pension' : ''})
 							</span>
 						{/if}
 						<code>{calc.cashflowEq}</code>
@@ -479,9 +557,10 @@
 						<li>
 							<span class="calc-label">Grow by {pctStr(calc.growth)}</span>
 							<code
-								>{num(calc.afterCashflow)} × (1 {calc.growth < 0 ? '−' : '+'} {pctStr(
-									Math.abs(calc.growth)
-								)}) = {num(calc.afterCashflow)} × {dec(1 + calc.growth)} = {num(calc.closing)}</code
+								>{num(calc.afterCashflow)} × (1 {calc.growth < 0 ? '−' : '+'}
+								{pctStr(Math.abs(calc.growth))}) = {num(calc.afterCashflow)} × {dec(
+									1 + calc.growth
+								)} = {num(calc.closing)}</code
 							>
 						</li>
 					{:else}
@@ -531,8 +610,8 @@
 						{#if calc.matches}
 							✓ Matches the graph's age {calc.A + 1} balance ({money(calc.graphNext)}).
 						{:else}
-							≈ The graph shows {money(calc.graphNext)} at age {calc.A + 1}; small differences can appear
-							in the years an account is nearly depleted.
+							≈ The graph shows {money(calc.graphNext)} at age {calc.A + 1}; small differences can
+							appear in the years an account is nearly depleted.
 						{/if}
 					</p>
 				{/if}
@@ -541,8 +620,8 @@
 					{#if allOk}
 						✓ All {checkable.length} years reconcile with the graph.
 					{:else}
-						{reconciled} of {checkable.length} years match — small differences can appear in the years an
-						account is nearly depleted.
+						{reconciled} of {checkable.length} years match — small differences can appear in the years
+						an account is nearly depleted.
 					{/if}
 				</p>
 				<div class="calc-table-wrap">

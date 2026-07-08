@@ -6,16 +6,24 @@
 	// Household toggle is a home-page preset only (it just swaps default numbers).
 	let { household = false }: { household?: boolean } = $props();
 
-	// Chart view — the Tax view only exists when there's assessable income. `view`
-	// is the user's choice; `activeView` forces Balance when the Tax tab is hidden,
-	// without an effect (so the user's choice is remembered if it reappears).
-	let view = $state<'balance' | 'tax'>('balance');
-	const showTaxTab = $derived(plan.hasTaxableItems);
-	const activeView = $derived(showTaxTab ? view : 'balance');
-
 	const assumptions = $derived<Assumptions>(plan.buildAssumptions());
 	const avg = $derived(project(plan.assets, assumptions, 'average'));
 	const bad = $derived(project(plan.assets, assumptions, 'bad'));
+
+	// Chart view — Tax exists only with assessable income; Set aside only when the
+	// minimum drawdown has forced money aside. `view` is the user's choice;
+	// `activeView` falls back to Balance when the chosen tab is hidden (without an
+	// effect, so the choice is remembered if the tab reappears).
+	let view = $state<'balance' | 'tax' | 'setAside'>('balance');
+	const showTaxTab = $derived(plan.hasTaxableItems);
+	const showSetAsideTab = $derived(avg.totalSetAside > 0.5);
+	const activeView = $derived(
+		view === 'tax' && showTaxTab
+			? 'tax'
+			: view === 'setAside' && showSetAsideTab
+				? 'setAside'
+				: 'balance'
+	);
 
 	// Round an axis up to "nice" gridline values so they read as round amounts.
 	const niceStep = (max: number): number => {
@@ -105,6 +113,20 @@
 		avg.points.map((p) => `${x(p.age).toFixed(1)},${yt(p.tax).toFixed(1)}`).join(' ')
 	);
 
+	// --- Set aside view: the forced-drawdown bucket accumulating (average case) ---
+	const totalSetAside = $derived(avg.totalSetAside);
+	const saStep = $derived(niceStep(Math.max(1, totalSetAside)));
+	const saAxisMax = $derived(Math.ceil(Math.max(1, totalSetAside) / saStep) * saStep);
+	const saYTicks = $derived.by(() => {
+		const ticks: number[] = [];
+		for (let v = 0; v <= saAxisMax + 1e-6; v += saStep) ticks.push(v);
+		return ticks;
+	});
+	const ys = (v: number) => 188 - (v / saAxisMax) * 148;
+	const saLine = $derived(
+		avg.points.map((p) => `${x(p.age).toFixed(1)},${ys(p.setAside).toFixed(1)}`).join(' ')
+	);
+
 	// Hover readout (shared — only one view is visible at a time).
 	let hoverAge = $state<number | null>(null);
 	const hp = $derived(
@@ -129,18 +151,32 @@
 	<h4>
 		{#if activeView === 'tax'}
 			{compact(totalTax)} in tax to age {plan.planToAge}
+		{:else if activeView === 'setAside'}
+			{compact(totalSetAside)} set aside by age {plan.planToAge}
 		{:else}
 			{compact(plan.totalBalance)}
 			{plan.bankAccounts.length ? 'total' : 'super'} to age {plan.planToAge}
 		{/if}
 	</h4>
-	{#if showTaxTab}
+	{#if showTaxTab || showSetAsideTab}
 		<div class="toggle" role="group" aria-label="Chart view">
-			<button type="button" class:active={view === 'balance'} onclick={() => (view = 'balance')}
-				>Balance</button
+			<button
+				type="button"
+				class:active={activeView === 'balance'}
+				onclick={() => (view = 'balance')}>Balance</button
 			>
-			<button type="button" class:active={view === 'tax'} onclick={() => (view = 'tax')}>Tax</button
-			>
+			{#if showTaxTab}
+				<button type="button" class:active={activeView === 'tax'} onclick={() => (view = 'tax')}
+					>Tax</button
+				>
+			{/if}
+			{#if showSetAsideTab}
+				<button
+					type="button"
+					class:active={activeView === 'setAside'}
+					onclick={() => (view = 'setAside')}>Set aside</button
+				>
+			{/if}
 		</div>
 	{:else if household}
 		<div class="toggle" role="group" aria-label="Household">
@@ -243,6 +279,76 @@
 			No tax due — your assessable income stays under the senior tax-free thresholds. Your super
 			pension is tax-free.
 		{/if}
+	</p>
+{:else if activeView === 'setAside'}
+	<svg
+		viewBox="0 0 400 216"
+		role="img"
+		aria-label="Money set aside by the minimum drawdown, accumulating over the plan"
+		onpointermove={onHover}
+		onpointerleave={() => (hoverAge = null)}
+	>
+		<rect x="0" y="0" width="400" height="216" fill="transparent" />
+		<g stroke="#eef1f4" stroke-width="1">
+			{#each saYTicks as v}
+				<line x1="44" y1={ys(v).toFixed(1)} x2="384" y2={ys(v).toFixed(1)} />
+			{/each}
+		</g>
+		<g font-size="11" fill="#93a0b0" text-anchor="end">
+			{#each saYTicks as v}
+				<text x="40" y={(ys(v) + 3.5).toFixed(1)}>{axisMoney(v)}</text>
+			{/each}
+		</g>
+
+		<circle cx="48" cy="12.5" r="3.2" fill="#2e7d5b" />
+		<text x="57" y="16" font-size="13" font-weight="600" fill="#2e7d5b"
+			>Set aside (not re-spent)</text
+		>
+
+		<polyline
+			fill="none"
+			stroke="#2e7d5b"
+			stroke-width="2.6"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			points={saLine}
+		/>
+
+		{#if hp}
+			{@const hx = x(hp.age)}
+			{@const flip = hx > 210}
+			<g pointer-events="none">
+				<line
+					x1={hx}
+					y1="40"
+					x2={hx}
+					y2="188"
+					stroke="#cbd3dd"
+					stroke-width="1"
+					stroke-dasharray="3 3"
+				/>
+				<circle cx={hx} cy={ys(hp.setAside)} r="3.4" fill="#2e7d5b" />
+				<g transform={`translate(${flip ? hx - 138 : hx + 10}, 44)`}>
+					<rect width="128" height="40" rx="6" fill="#0f2540" opacity="0.96" />
+					<text x="10" y="18" font-size="12" font-weight="700" fill="#fff">Age {hp.age}</text>
+					<circle cx="13" cy="31" r="3" fill="#7fc0a6" />
+					<text x="22" y="35" font-size="11.5" fill="#dce4ef">Set aside {fmtFull(hp.setAside)}</text
+					>
+				</g>
+			</g>
+		{/if}
+
+		<g font-size="11" fill="#93a0b0" text-anchor="middle">
+			{#each axisTicks as t}
+				<text x={x(t)} y="206">{t}</text>
+			{/each}
+		</g>
+	</svg>
+	<p class="chart-note">
+		Money the ATO minimum drawdown forces out of super beyond your spending — about {compact(
+			totalSetAside
+		)} by age {plan.planToAge}. It's set aside as cash (no growth) and isn't spent in the
+		projection, so your invested balance runs down as if it weren't there.
 	</p>
 {:else}
 	<div class="chart-legend">
