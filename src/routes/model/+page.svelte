@@ -186,29 +186,49 @@
 											: 'Salary before retirement ($/yr)'}</label
 									>
 									<Help
-										text="Your (pre-tax) salary while you're still working. Only the share going into super matters here — set that percentage below. The rest of your salary is your living money and isn't modelled. Leave blank if you're already retired."
+										text="Your (pre-tax) salary while you're still working. It drives the employer super contribution below. The rest of your salary is your living money and isn't modelled. Leave blank if you're already retired."
 									/>
 								</div>
 								<MoneyInput id="salary" bind:value={plan.salary} />
 							</div>
 							<div class="field">
 								<div class="field-head">
-									<label for="contribpct">% of salary into super</label>
+									<label for="sgpct">Employer Super Guarantee (%)</label>
 									<Help
-										text="The employer contribution (SG) is 12%. Add any salary sacrifice on top — e.g. 12% + a 5% sacrifice = 17%. This share (less the 15% contributions tax) is added to your super each year until you retire."
+										text="The compulsory employer contribution (Super Guarantee), currently 12% of salary. Raise it only if your employer pays more. Added to super each year (less the 15% contributions tax) until you retire."
 									/>
 								</div>
 								<input
-									id="contribpct"
+									id="sgpct"
 									type="number"
 									step="0.5"
 									min="0"
 									max="100"
-									value={pct(plan.superContribRate)}
-									oninput={(e) =>
-										(plan.superContribRate = (Number(e.currentTarget.value) || 0) / 100)}
+									value={pct(plan.sgRate)}
+									oninput={(e) => (plan.sgRate = (Number(e.currentTarget.value) || 0) / 100)}
 								/>
 							</div>
+							<div class="field">
+								<div class="field-head">
+									<label for="sacrifice"
+										>{couple
+											? 'Salary sacrifice ($/yr, combined)'
+											: 'Salary sacrifice ($/yr)'}</label
+									>
+									<Help
+										text="Extra before-tax salary you choose to put into super, on top of the compulsory employer Super Guarantee. Taxed 15% going in. It counts toward the $30,000 concessional cap, which already includes the Super Guarantee — so the most you can sacrifice is $30,000 minus that."
+									/>
+								</div>
+								<MoneyInput id="sacrifice" bind:value={plan.salarySacrifice} />
+							</div>
+							{#if plan.sacrificeOverCap}
+								<p class="warn-note">
+									⚠ Salary sacrifice is capped at the {money(plan.concessionalCap)} concessional limit
+									(which includes the {money(Math.round(plan.salary * plan.sgRate))} employer Super Guarantee).
+									The model uses {money(plan.salarySacrificeCap)}; the excess would be taxed at your
+									marginal rate, not 15%.
+								</p>
+							{/if}
 						{/if}
 					</div>
 				{/if}

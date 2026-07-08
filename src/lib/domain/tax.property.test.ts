@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { taxOwed, TAX_2024_25 as S } from './tax';
-import { Household } from './household';
+import { Household, CONCESSIONAL_CAP, salarySacrificeRoom } from './household';
 import { IncomeSource } from './income';
 
 // Property / fuzz tests for the tax engine. Each tax component is checked against
@@ -158,5 +158,34 @@ describe('Household.contributionAt — 15% concessional tax', () => {
 	it('ignores spendable (non-toSuper) income', () => {
 		const h = new Household('single', [new IncomeSource('rent', 20_000, 67, 90, true, true, false)]);
 		expect(h.contributionAt(70)).toBe(0);
+	});
+});
+
+describe('salarySacrificeRoom — concessional cap (SG + sacrifice ≤ $30k)', () => {
+	it('room is the cap minus the employer SG already used', () => {
+		// $120k salary @ 12% SG = $14,400, so $15,600 of sacrifice fits under the cap.
+		expect(salarySacrificeRoom(120_000, 0.12)).toBe(CONCESSIONAL_CAP - 14_400);
+		expect(salarySacrificeRoom(120_000, 0.12)).toBe(15_600);
+	});
+
+	it('leaves no room when the SG alone meets or exceeds the cap', () => {
+		expect(salarySacrificeRoom(300_000, 0.12)).toBe(0); // $36k SG > $30k cap
+		expect(salarySacrificeRoom(250_000, 0.12)).toBe(0); // exactly $30k SG
+	});
+
+	it('gives the whole cap when there is no salary', () => {
+		expect(salarySacrificeRoom(0, 0.12)).toBe(CONCESSIONAL_CAP);
+	});
+
+	it('a sacrifice clamped to the room fills the cap exactly', () => {
+		const salary = 120_000,
+			sg = 0.12;
+		const sacrifice = salarySacrificeRoom(salary, sg); // clamp a large request to the room
+		const h = new Household('single', [
+			new IncomeSource('sg', salary, 57, 66, true, true, true, sg),
+			new IncomeSource('sac', sacrifice, 57, 66, true, true, true, 1)
+		]);
+		// Gross concessional = full cap; net into super = cap × 0.85.
+		expect(h.contributionAt(60)).toBeCloseTo(CONCESSIONAL_CAP * 0.85, 6); // 25,500
 	});
 });

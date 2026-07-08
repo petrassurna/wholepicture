@@ -72,7 +72,7 @@ Process rule: **before any release, re-verify the tax and pension constants agai
 - The bad-case **crash hits the whole portfolio**, including bank/TDs — unrealistic for cash; a term deposit doesn't crash.
 - **Accumulation applies a 15% earnings-tax drag to every asset**, not just super. Correct for super (the dominant accumulation asset); for a bank account the working-years marginal rate is usually higher, so 15% understates it slightly.
 - **Age Pension v1 is the assets test only**, homeowner, single/couple. The income test + deeming and non-homeowner rules aren't modelled — for asset-rich retirees the assets test almost always binds, so this is close.
-- **No concessional-cap enforcement** — a very large "Pays into super" figure isn't capped at $30k/yr, and Division 293 for high earners isn't modelled.
+- **Concessional cap enforced on salary sacrifice** — SG + sacrifice is clamped to the $30k concessional cap (`CONCESSIONAL_CAP` in `household.ts`); the excess is dropped, and the UI warns. Division 293 for high earners isn't modelled. After-tax (non-concessional) contributions aren't modelled at all.
 - **No fees input** — the return is entered net of fees (there's no separate fees field). A user entering a gross return over-projects.
 - **Transfer balance cap not modelled** — all super is treated as tax-free pension phase; above ~$1.9M the excess would really stay in accumulation at 15%. Optimistic for very large balances.
 - **Couples = one shared timeline** — same ages, retiring together; no different-ages and no survivor scenario (spending drop + single-rate pension when one partner dies).

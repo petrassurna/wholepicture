@@ -61,9 +61,10 @@
 
 		<H2 text="Super contributions (before retirement)" />
 		<ul>
-			<li>If you are still working, contributions are modelled as a percentage of salary — the employer contribution (SG) plus any salary sacrifice — less the 15% contributions tax.</li>
+			<li>If you are still working, super contributions are the employer SG (a percentage of salary) plus any salary sacrifice (a dollar amount), each taxed 15% going in.</li>
+			<li>Salary sacrifice is capped at the $30,000 concessional limit, which <em>includes</em> the SG — so the most that can be sacrificed is $30,000 minus the SG. Amounts above the cap are ignored (in reality they'd be taxed at your marginal rate).</li>
 			<li>Super fund earnings during the working (accumulation) years are taxed at 15%.</li>
-			<li>The concessional contributions cap is not enforced.</li>
+			<li>After-tax (non-concessional) contributions and the downsizer contribution are not modelled.</li>
 		</ul>
 
 		<H2 text="Drawing down your super — an important limitation" />

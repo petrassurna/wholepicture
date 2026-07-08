@@ -5,7 +5,7 @@
 import { Super, BankAccount, type Asset } from '$lib/domain/assets';
 import { realReturn, type Assumptions } from '$lib/domain/projection';
 import { IncomeSource } from '$lib/domain/income';
-import { Household } from '$lib/domain/household';
+import { Household, CONCESSIONAL_CAP, salarySacrificeRoom } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
 type BankInput = { name: string; amount: number; rate: number };
@@ -117,10 +117,12 @@ class Plan {
 	// Superannuation
 	superBalance = $state(DEFAULTS.single.superBalance);
 	superReturn = $state(0.07); // nominal p.a.
-	// Contributions while still working (accumulation): salary and the share of it
-	// paid into super (SG 12% + any salary sacrifice). Only used if currentAge < retireAge.
+	// Contributions while still working (accumulation). Only used if currentAge < retireAge.
+	// sgRate = employer Super Guarantee rate on salary; salarySacrifice = extra before-tax
+	// dollars. Both are concessional (taxed 15% going in).
 	salary = $state(0);
-	superContribRate = $state(0.12);
+	sgRate = $state(0.12);
+	salarySacrifice = $state(0);
 
 	// Bank accounts / term deposits — each with its own rate
 	bankAccounts = $state<BankInput[]>([]);
@@ -154,27 +156,56 @@ class Plan {
 	}
 
 	get incomes(): IncomeSource[] {
-		// Retirement income (offsets drawdown), plus — while still working — a salary
-		// contributing to super. The salary is modelled as a toSuper source over the
-		// accumulation years; the domain treats it as a contribution, not spendable income.
+		// Retirement income (offsets drawdown), plus — while still working — super
+		// contributions modelled as toSuper sources over the accumulation years: the
+		// employer SG (a % of salary) and any salary sacrifice (a flat $ amount). The
+		// domain treats both as contributions (taxed 15%), not spendable income.
 		const sources = this.incomeSources.map(
 			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true, s.indexed ?? true)
 		);
-		if (this.salary > 0 && this.currentAge < this.retireAge) {
+		const working = this.currentAge < this.retireAge;
+		if (working && this.salary > 0) {
 			sources.push(
 				new IncomeSource(
-					'Salary',
+					'Salary (SG)',
 					this.salary,
 					this.currentAge,
 					this.retireAge - 1,
 					true,
 					true,
 					true,
-					this.superContribRate
+					this.sgRate
+				)
+			);
+		}
+		if (working && this.effectiveSacrifice > 0) {
+			sources.push(
+				new IncomeSource(
+					'Salary sacrifice',
+					this.effectiveSacrifice,
+					this.currentAge,
+					this.retireAge - 1,
+					true,
+					true,
+					true,
+					1
 				)
 			);
 		}
 		return sources;
+	}
+
+	// Concessional cap ($30k) covers SG + salary sacrifice. What's left for sacrifice
+	// after the employer SG is the most the model will accept; anything above is clamped.
+	readonly concessionalCap = CONCESSIONAL_CAP;
+	get salarySacrificeCap(): number {
+		return salarySacrificeRoom(this.salary, this.sgRate);
+	}
+	get effectiveSacrifice(): number {
+		return Math.min(this.salarySacrifice, this.salarySacrificeCap);
+	}
+	get sacrificeOverCap(): boolean {
+		return this.currentAge < this.retireAge && this.salarySacrifice > this.salarySacrificeCap;
 	}
 
 	/** The taxpayer(s): filing status + income sources. */
@@ -317,7 +348,10 @@ class Plan {
 				if (typeof d.superBalance === 'number') this.superBalance = d.superBalance;
 				if (typeof d.superReturn === 'number') this.superReturn = d.superReturn;
 				if (typeof d.salary === 'number') this.salary = d.salary;
-				if (typeof d.superContribRate === 'number') this.superContribRate = d.superContribRate;
+				// `superContribRate` is the legacy key (was the blended SG+sacrifice %).
+				if (typeof d.sgRate === 'number') this.sgRate = d.sgRate;
+				else if (typeof d.superContribRate === 'number') this.sgRate = d.superContribRate;
+				if (typeof d.salarySacrifice === 'number') this.salarySacrifice = d.salarySacrifice;
 				if (typeof d.inflation === 'number') this.inflation = d.inflation;
 				if (typeof d.downturn === 'number') this.downturn = d.downturn;
 				if (typeof d.recoveryYears === 'number') this.recoveryYears = d.recoveryYears;
@@ -393,7 +427,8 @@ class Plan {
 			superBalance: this.superBalance,
 			superReturn: this.superReturn,
 			salary: this.salary,
-			superContribRate: this.superContribRate,
+			sgRate: this.sgRate,
+			salarySacrifice: this.salarySacrifice,
 			bankAccounts: this.bankAccounts,
 			incomeSources: this.incomeSources,
 			spendItems: this.spendItems,
@@ -422,7 +457,8 @@ class Plan {
 		this.planToAge = 90;
 		this.superReturn = 0.07;
 		this.salary = 0;
-		this.superContribRate = 0.12;
+		this.sgRate = 0.12;
+		this.salarySacrifice = 0;
 		this.bankAccounts = [];
 		this.incomeSources = [];
 		this.spendItems = defaultSpendItems('single');

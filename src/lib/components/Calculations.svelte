@@ -69,10 +69,17 @@
 			const afterCashflow = opening + contribution;
 			const closing = afterCashflow * (1 + growth);
 			const growthEq = `${pctStr(R)} × 0.85 = ${pctStr(R * 0.85)} after the 15% earnings tax, then (1 + ${pctStr(R * 0.85)}) ÷ (1 + ${pctStr(I)}) − 1 = ${pctStr(growth)}`;
-			const contributionEq =
-				contribution > 0.5
-					? `${num(plan.salary)} × ${pctStr(plan.superContribRate)} × 0.85 (after 15% contributions tax) = ${num(contribution)}`
-					: '';
+			const sgGross = plan.salary * plan.sgRate;
+			const sacGross = plan.effectiveSacrifice;
+			const concGross = sgGross + sacGross;
+			let contributionEq = '';
+			if (contribution > 0.5) {
+				const src =
+					sacGross > 0.5
+						? `SG ${num(sgGross)} + sacrifice ${num(sacGross)} = ${num(concGross)}`
+						: `${num(plan.salary)} × ${pctStr(plan.sgRate)} = ${num(concGross)}`;
+				contributionEq = `${src}, × 0.85 (after 15% contributions tax) = ${num(contribution)}`;
+			}
 			const cashflowEq =
 				contribution > 0.5
 					? `${num(opening)} + ${num(contribution)} = ${num(afterCashflow)}`

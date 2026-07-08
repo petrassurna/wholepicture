@@ -21,6 +21,17 @@ import { agePension } from './pension';
 /** Concessional (before-tax) super contributions are taxed 15% going into the fund. */
 const CONTRIBUTIONS_TAX = 0.15;
 
+/** Annual concessional contributions cap (employer SG + salary sacrifice + personal
+ *  deductible), 2024–25 onward. Today's dollars; indexes ~with wages over time. */
+export const CONCESSIONAL_CAP = 30_000;
+
+/** How much salary sacrifice fits under the concessional cap once the employer SG
+ *  (salary × sgRate) is counted. The cap includes the SG, so room = cap − SG, floored
+ *  at zero (a high SG can use the whole cap on its own). */
+export function salarySacrificeRoom(salary: number, sgRate: number): number {
+	return Math.max(0, CONCESSIONAL_CAP - salary * sgRate);
+}
+
 export class Household {
 	constructor(
 		readonly filing: Filing,
