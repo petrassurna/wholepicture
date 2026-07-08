@@ -7,6 +7,7 @@
 	import { feedbackMailto } from '$lib/config';
 	import { trackEvent } from '$lib/analytics';
 	import { onMount } from 'svelte';
+	import DevDisclaimer from '$lib/components/DevDisclaimer.svelte';
 
 	// Page views. `development` mode keeps local traffic out of production numbers.
 	injectAnalytics({ mode: dev ? 'development' : 'production' });
@@ -24,6 +25,8 @@
 	<meta property="og:type" content="website" />
 	<meta name="twitter:card" content="summary" />
 </svelte:head>
+
+<DevDisclaimer />
 
 <nav class="nav">
 	<a class="brand" href="/">Whole<span>Picture</span></a>

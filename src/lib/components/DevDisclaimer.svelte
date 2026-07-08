@@ -1,5 +1,5 @@
 <script lang="ts">
-	// A work-in-progress warning shown once per browser session on the home page.
+	// A work-in-progress warning shown once per browser session, on whatever route the user first lands on.
 	let open = $state(false);
 	const KEY = 'wholepicture.disclaimer.ack';
 
