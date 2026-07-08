@@ -1,11 +1,11 @@
 # STATUS — where the build actually is
 
-*The living record of what's built, why it's built this way, and what's next.*
+_The living record of what's built, why it's built this way, and what's next._
 For the long-term product vision, see [`VISION.md`](./VISION.md) — that's the north
 star and is deliberately bigger than what exists today. **This file is the truth about
 the current code; the vision is the ambition.**
 
-Last updated: 2026-07-07.
+Last updated: 2026-07-08.
 
 ---
 
@@ -14,23 +14,26 @@ Last updated: 2026-07-07.
 A working, chart-first retirement model — a focused but steadily growing slice of the vision. It now spans both the accumulation years (still working, paying into super) and the drawdown years (retired, spending down), all in today's dollars.
 
 **App surface** (SvelteKit, `wholepicture/`):
+
 - Routes: `/` (home), `/model` (the tool), `/blog` + `/blog/[slug]` (prerendered guides), `/assumptions` (the public "how it works & assumptions" page), `/privacy`, `/terms`, shared `+layout.svelte` nav.
 - Home: hero with a live preview chart and a **work-in-progress disclaimer popup** (once per session).
-- `/model` is the tool: collapsible sections (You / Superannuation / Spending / Bank accounts / Income / Assumptions) feeding a **pinned chart** that updates live. Includes an **"Age now"** field (drives the accumulation phase), an **"Include Age Pension"** toggle, a frequency-based **spending breakdown**, and a **"Reset all values"** button.
-- Chart: **Balance | Tax toggle** (Tax view only when there's assessable income), graded dollar axes, **hover tooltips** on both views, and a **"Retire" marker** when there's an accumulation phase.
+- `/model` is the tool: collapsible sections (You / Superannuation / Spending / Bank/investment accounts / Income / Assumptions) feeding a **pinned chart** that updates live. Bank/investment accounts take a total **return** and a separate **taxable-income %** (full return for cash, distribution yield for a growth investment). Includes an **"Age now"** field (drives the accumulation phase), an **"Include Age Pension"** toggle, a frequency-based **spending breakdown**, and a **"Reset all values"** button.
+- Chart: **Balance | Tax | Set aside toggle** (Tax only when there's assessable income; Set aside only when the minimum drawdown has forced money aside), graded dollar axes, **hover tooltips**, and a **"Retire" marker** when there's an accumulation phase.
 - **Calculations panel** under the chart: reproduces the year-by-year arithmetic with real numbers substituted (Step view) and reconciles every year against the graph (Table view) — a self-check for the engine.
 - **Blog:** four factual, education-only (ASIC-safe) articles with SEO metadata and JSON-LD, each with an auto-appended "general information, not advice" disclaimer.
 - **Analytics + feedback:** Vercel Web Analytics (page views free; custom events like `engaged` / `opened_calculations` need Vercel Pro), privacy-safe (event names only, never dollar values); a footer "Feedback" `mailto` (address in `src/lib/config.ts`).
 
-**Domain** (`src/lib/domain/`, pure / framework-free / deterministic, **88 unit tests across 8 files** including fuzz/property suites):
-- `assets.ts` — `Asset` + the `ITaxable` capability (`assessableIncomeOn`). `Super` is structurally tax-free (not `ITaxable`); `BankAccount` is taxable. `isTaxable` guard.
+**Domain** (`src/lib/domain/`, pure / framework-free / deterministic, **107 unit tests across 9 files** including fuzz/property suites):
+
+- `assets.ts` — `Asset` + the `ITaxable` capability (`assessableIncomeOn`). `Super` is structurally tax-free (not `ITaxable`); `BankAccount` is taxable and carries a **`taxableRate`** (assessable yield) separate from its total return — the whole return for a cash account, just the distribution yield for a growth investment. `isTaxable` guard.
+- `drawdown.ts` — `minDrawdownRate(age)`: the ATO age-banded minimum pension drawdown (4%→14%), a swappable policy like the tax/pension tables.
 - `income.ts` — `IncomeSource` (amount, age window, `taxable`, `indexed` for inflation, `toSuper` contribution flag, `superRate` share of salary). `grossIncomeAt`/`taxableIncomeAt` (exclude contributions), `contributionsAt` (the `toSuper` share). `RealCtx` deflates non-indexed income.
 - `household.ts` — the `Household` aggregate: filing status + income sources. `taxOn` (a couple splits total assessable income **50/50** and is assessed as two people), `agePensionAt`, and `contributionAt` (applies the 15% concessional contributions tax).
 - `tax.ts` — `taxOwed(taxable, filing, scale)`: marginal brackets + SAPTO + LITO + Medicare levy, in a **swappable tax-year constants table** (currently 2024-25).
 - `pension.ts` — `agePension(age, assets, income, filing, homeowner, scale)`: the Age Pension **assets test and income test (with deeming), paying the lower** — as Centrelink does — single/couple, homeowner, in an indexed constants table. Tax-free, from age 67.
-- `projection.ts` — `project(assets, assumptions, scenario)`: runs an **accumulation phase** (before `retireAge`: contributions in, 15%-earnings-taxed growth, no spending) then **drawdown** (income offset, tax, Age Pension, spend; the bad-case crash is timed to retirement). All the policies (tax, pension, income, contributions) are **injected callbacks** — the engine knows nothing about SAPTO or filing.
+- `projection.ts` — `project(assets, assumptions, scenario)`: runs an **accumulation phase** (before `retireAge`: contributions in, 15%-earnings-taxed growth, no spending) then **drawdown** (income offset, tax, Age Pension, spend; the bad-case crash is timed to retirement). Drawdown is **super-first** (other accounts only once super is exhausted), enforces the **minimum drawdown** with the forced excess going to a running **`setAside`** bucket, and floors the net draw at zero (no surplus reinvestment) — see design-philosophy point 7. All the policies (tax, pension, income, contributions) are **injected callbacks** — the engine knows nothing about SAPTO or filing.
 
-**What's modelled:** super (tax-free in pension phase; 15%-taxed earnings in accumulation), bank/term deposits (taxed interest), retirement income (work/rent, indexed or fixed), **salary contributions into super** (SG % + salary sacrifice, 15% contributions tax), single or couple, the **Age Pension** (assets test **and** income test with deeming, paying the lower; phasing in as assets fall), average vs bad-case (sequence-risk) scenarios, and drawdown to a plan-to age with run-out detection.
+**What's modelled:** super (tax-free in pension phase; 15%-taxed earnings in accumulation), bank/investment accounts (taxed each year on a settable taxable-income yield — full return for cash, distribution yield for a growth investment), retirement income (work/rent, indexed or fixed), **salary contributions into super** (SG % + salary sacrifice, 15% contributions tax), single or couple, the **Age Pension** (assets test **and** income test with deeming, paying the lower; phasing in as assets fall), average vs bad-case (sequence-risk) scenarios, and a deliberately-conservative **drawdown** (super-first, ATO minimum enforced with forced excess set aside, no surplus reinvestment — see design-philosophy point 7) to a plan-to age with run-out detection.
 
 **What's not (yet):** property, shares, the Age Pension **Work Bonus** (employment-income concession) and non-homeowner pension rules, life events, the wider multi-tab "whole picture" from the vision doc, real accounts / persistence beyond localStorage.
 
@@ -38,37 +41,48 @@ A working, chart-first retirement model — a focused but steadily growing slice
 
 ## Design philosophy (the decisions, with rationale)
 
-**1. Pure domain, thin UI.** All maths lives in `src/lib/domain` — no framework, no I/O, fully deterministic and unit-tested. Svelte state (`plan.svelte.ts`) is a composition root that builds domain objects from raw inputs and exposes `buildAssumptions()` so the chart and the calculations panel run the *same* projection.
+**1. Pure domain, thin UI.** All maths lives in `src/lib/domain` — no framework, no I/O, fully deterministic and unit-tested. Svelte state (`plan.svelte.ts`) is a composition root that builds domain objects from raw inputs and exposes `buildAssumptions()` so the chart and the calculations panel run the _same_ projection.
 
 **2. DDD, and specifically:**
-- **Assets own the taxable *amount*, never the tax *rate*.** Tax is progressive and per-person, so no single asset can compute its own tax. `ITaxable.assessableIncomeOn` exposes the amount; `Household` + `tax.ts` apply the scale. (This replaced an earlier `afterTaxReturn(rate)` that baked a flat rate into each asset — the anti-pattern.)
+
+- **Assets own the taxable _amount_, never the tax _rate_.** Tax is progressive and per-person, so no single asset can compute its own tax. `ITaxable.assessableIncomeOn` exposes the amount; `Household` + `tax.ts` apply the scale. (This replaced an earlier `afterTaxReturn(rate)` that baked a flat rate into each asset — the anti-pattern.)
 - **`Household` is the aggregate** that encapsulates single-vs-couple. The projection engine calls injected `incomeAt` / `taxOn` / `pensionAt` / `contributionAt` callbacks and knows nothing about filing, SAPTO, or the pension taper. That dependency injection is the main decoupling win, and it's how the pension and accumulation slotted in with no engine surgery.
 - **Tax and pension scales are swappable policies** keyed by year — annual updates are a data edit, not a code change.
 
-**3. Chart-first, and today's dollars.** The graph is the product: pinned, prominent, fed live by the inputs. Everything is expressed in **today's dollars** — balances grow at the *real* return (`(1+nominal)/(1+inflation)−1`), spending is flat in real terms, indexed income is flat, fixed income erodes. One conversion (the real return) puts the whole model in one unit, so no figure ever needs manual inflation-adjustment.
+**3. Chart-first, and today's dollars.** The graph is the product: pinned, prominent, fed live by the inputs. Everything is expressed in **today's dollars** — balances grow at the _real_ return (`(1+nominal)/(1+inflation)−1`), spending is flat in real terms, indexed income is flat, fixed income erodes. One conversion (the real return) puts the whole model in one unit, so no figure ever needs manual inflation-adjustment.
 
 **4. Tax modelling choices (deliberate, documented in code):**
+
 - **Marginal, not flat** — with SAPTO/LITO/Medicare, because without SAPTO a modest retiree shows tax where the real answer is $0 (not credible).
-- **Conservative bias:** assessable investment income is *nominal* interest while balances grow at their *real* return — matches how nominal interest is actually taxed, and is the safe direction.
+- **Conservative bias:** assessable investment income is _nominal_ interest while balances grow at their _real_ return — matches how nominal interest is actually taxed, and is the safe direction.
 - **Couples split assessable income 50/50 automatically** and are assessed as two people (two tax-free thresholds, two SAPTOs). Per-item owner attribution was tried and removed as too complex for this stage — 50/50 is a documented simplification of the ATO's individual-assessment basis.
 
 **5. Accumulation reuses income, not a new section.** Salary contributions are an income row flagged **"Pays into super"** with a **% of salary** (SG default 11.5%). Only that share (less 15% contributions tax) is added to super; the rest of the salary is the working-life money the model doesn't track. The only genuinely new input is **"Age now"** — without pre-retirement years there's nothing to contribute over.
 
-**6. Honest + verifiable by design.** "Illustrative only," visible/editable assumptions, a prominent work-in-progress disclaimer, and the **calculations panel** that shows and self-checks the arithmetic. The product *shows consequences, never recommends* (see the vision doc's "Safe by Design"). The blog holds the same line — factual/educational only.
+**6. Honest + verifiable by design.** "Illustrative only," visible/editable assumptions, a prominent work-in-progress disclaimer, and the **calculations panel** that shows and self-checks the arithmetic. The product _shows consequences, never recommends_ (see the vision doc's "Safe by Design"). The blog holds the same line — factual/educational only.
+
+**7. Drawdown is deliberately simple and conservative — a philosophical choice, not a "correct" cash-flow engine.** The vision's lowest-tax-first waterfall with surplus reinvestment (VISION.md) is the someday-ideal; what's _built_ is a blunter, safer model, picked so every year reconciles in the calc panel and always errs toward the user being _worse_ off, never flattered:
+
+- **Spending is funded from super first.** Bank/investment accounts are left to grow and are only drawn once super is exhausted (a genuine last resort). Conservative — the tax-free, growing pot is spent down first — and it keeps the maths checkable (in a normal year every non-super account is just "opening × growth", no mysterious pro-rata sliver).
+- **A plain income surplus is not saved.** When income + Age Pension exceed spending + tax, the draw is floored at zero: nothing is drawn and the leftover isn't modelled. It never tops a balance back up.
+- **The forced minimum-drawdown excess is "set aside".** Once retired, super must pay out the ATO minimum (5%→14% by age); whatever that forces out _beyond_ what's needed to spend goes into a **non-growing bucket that is shown but never re-spent**. So a big-balance / low-spend (or high-income) plan sees super bled into idle cash that doesn't extend longevity — the run-out age reflects only the invested assets.
+- **This is a philosophical decision, not a claim of correctness.** It is explicitly _not_ a cash-flow optimiser; it's a defensible, transparent simplification. Both directions are conservative (over-draw is parked to a 0% bucket; under-draw comes from super rather than reinvesting). A faithful version — reinvest the excess into a taxable account and draw it as a last resort — is deferred as a **Pro-tier** feature. Better to understate than to flatter.
 
 ### ⚠️ Accuracy risk to watch — statutory rates go stale (and could be wrong)
 
 The tax and Age Pension figures are **legislated constants that change several times a year** (pension: 20 Mar / 1 Jul / 20 Sep; tax: each financial year). They live in dated, swappable tables (`tax.ts`, `pension.ts`), but **if they're not kept current the tool will quietly show wrong numbers** — and for the Age Pension especially, the figures moved so often that three different AIs each quoted a different (stale) number during development. This is a real **false-information / liability risk**: a user could take a pension estimate as fact.
 
 Containment in place:
+
 - Pension constants are date-stamped (`asAt`) and that date is shown to the user; the model page carries a **prominent "estimate only — verify with Services Australia" warning** whenever the pension is on; the calc panel labels the pension line as an estimate.
 - The pension runs **both means tests and pays the lower** (assets + income with deeming); the income-test constants (deeming rates/thresholds, income free areas) are as volatile as the rest and must be verified too. The **Work Bonus is not modelled**, so a working retiree's estimate is conservative (never overstated).
 
 Process rule: **before any release, re-verify the tax and pension constants against the ATO and Services Australia, and bump the `asAt` date.** Never present these as an entitlement — always an estimate.
 
-> **Keep these three in sync when anything changes:** the constants (`tax.ts` / `pension.ts`), this doc, and the **public `/assumptions` page** (`src/routes/assumptions/+page.svelte`). That page is the user-facing statement of every assumption and limitation — it pulls the tax/pension *dates* live from the constants, but its prose (what's modelled, what isn't) must be updated by hand when the model changes.
+> **Keep these three in sync when anything changes:** the constants (`tax.ts` / `pension.ts`), this doc, and the **public `/assumptions` page** (`src/routes/assumptions/+page.svelte`). That page is the user-facing statement of every assumption and limitation — it pulls the tax/pension _dates_ live from the constants, but its prose (what's modelled, what isn't) must be updated by hand when the model changes.
 
 ### Known simplifications (accepted for now)
+
 - The bad-case **crash hits the whole portfolio**, including bank/TDs — unrealistic for cash; a term deposit doesn't crash.
 - **Accumulation applies a 15% earnings-tax drag to every asset**, not just super. Correct for super (the dominant accumulation asset); for a bank account the working-years marginal rate is usually higher, so 15% understates it slightly.
 - **Age Pension runs both means tests** (assets + income with deeming, paying the lower), homeowner, single/couple. Not modelled: the **Work Bonus** (employment-income concession — its omission makes the estimate conservative for workers) and non-homeowner thresholds + rent assistance.
@@ -78,10 +92,10 @@ Process rule: **before any release, re-verify the tax and pension constants agai
 - **Couples = one shared timeline** — same ages, retiring together; no different-ages and no survivor scenario (spending drop + single-rate pension when one partner dies).
 - **Preservation age not enforced** — an early retirement age will still draw super, even below ~60 when it's not legally accessible.
 - The **bad case is a single illustrative stress test**, not a probability/Monte Carlo — it's the crash-at-retirement scenario the user sets, not a statistical worst case.
-- **Minimum super drawdown not enforced.** The law forces a minimum annual withdrawal (5% at 65–74, rising to 14% at 95+). The model draws only what you need and leaves the rest compounding tax-free in super. It only diverges for big-balance / low-spend cases (forced withdrawals would move to a taxable account), and it affects *terminal wealth* via a tax drag, not *how long the money lasts*. Super **death-benefits tax** (~15–17% on benefits to non-dependents) is likewise not modelled — relevant only if terminal/estate wealth becomes a headline output.
+- **Minimum super drawdown IS enforced — into a non-growing "set aside" bucket (a deliberate simplification).** Super pays out at least the ATO minimum (5% at 65–74, rising to 14% at 95+); when that exceeds what you need, the surplus is parked in a bucket that earns no return and is never re-spent (shown on the chart's _Set aside_ view and in the calc panel). This is conservative but _not_ faithful — in reality you'd reinvest that money in a taxable account and could draw on it later; here it just sits, so a big-balance/low-spend plan's invested balance runs down as if it weren't there. See design-philosophy point 7; a faithful version is a Pro-tier follow-up. Super **death-benefits tax** (~15–17% on benefits to non-dependents) is still not modelled — relevant only if terminal/estate wealth becomes a headline output.
 - **Statutory constants:** pension rates (assets **and** income test — max rates, free areas, deeming rates/thresholds) verified as at **1 July 2026** (`pension.ts`); the SG default is **12%** (final rate, from 1 July 2025); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
 - **Money is a raw `number`** — no `Money`/`Percent`/`Age` value objects yet (the vision/MVP called for integer-cents `Money`).
-- **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items *are* treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation; a single "spend grows above inflation" knob is the cheap future option if wanted.
+- **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items _are_ treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation; a single "spend grows above inflation" knob is the cheap future option if wanted.
 
 ---
 
@@ -94,14 +108,15 @@ Prioritised, with the reasoning behind the order:
 3. **Age Pension follow-ups:** the **Work Bonus** (employment-income concession), and non-homeowner thresholds + rent assistance. The income test + deeming is now done; these remaining pieces mainly help working retirees and renters.
 4. **Enforce the concessional contributions cap** ($30k/yr) and optionally Division 293 — small guards on the accumulation inputs.
 5. **`Money` value object — when the domain stabilises.** Foundational and mechanical (touches everything), so it only gets more expensive; but for an illustrative tool the float-drift risk is low, so not urgent. Do it before numbers drive real advice or hit a DB.
-6. **Injected scenario / drawdown strategies — when the second case arrives.** Today the engine hardcodes the crash/recovery path and pro-rata drawdown. The seam is obvious; extracting it early would be premature abstraction.
-7. **Rethink the `Asset` abstraction *before* building property/shares.** This is a *shape* change, not an addition: `assessableIncomeOn(held)` assumes assets are divisible, cash-like, and assessed annually. It breaks on CGT-on-sale (shares), illiquidity (property), and assets that also yield *spendable* income (rent). Design it first.
+6. **Injected scenario / drawdown strategies — when the second case arrives.** Today the engine hardcodes the crash/recovery path and the super-first drawdown order. The seam is obvious; extracting it early would be premature abstraction. (Related Pro-tier item: a _faithful_ excess-handling model — reinvest the set-aside bucket in a taxable account and draw it as a last resort — instead of the current park-it-and-forget bucket.)
+7. **Rethink the `Asset` abstraction _before_ building property/shares.** This is a _shape_ change, not an addition: `assessableIncomeOn(held)` assumes assets are divisible, cash-like, and assessed annually. It breaks on CGT-on-sale (shares), illiquidity (property), and assets that also yield _spendable_ income (rent). Design it first.
 8. **Crash only growth assets**, not cash (removes the term-deposit-crashes oddity).
 9. **Beyond the current slice:** more asset tabs, life events, real accounts + persistence — the vision doc's territory.
 
 ---
 
 ## Doc map
+
 - [`VISION.md`](./VISION.md) — product vision (why / what-forever). Aspirational.
 - `STATUS.md` (this file) — where we are, how, and what's next. The current truth.
 - [`../README.md`](../README.md) — how to run the app.
