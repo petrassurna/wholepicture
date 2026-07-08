@@ -91,7 +91,7 @@
 							<div class="field-head">
 								<label for="agenow">Age now</label>
 								<Help
-									text="Your current age. If it's below your retirement age, the projection runs an accumulation phase first — your super keeps growing and any income marked 'pays into super' is added, until you retire and start drawing. Leave it equal to your retirement age if you're retiring now."
+									text="Your current age. If it's below your retirement age, the projection runs an accumulation phase first — your super keeps growing and any salary contributions (set in the Superannuation section) are added, until you retire and start drawing. Leave it equal to your retirement age if you're retiring now."
 								/>
 							</div>
 							<input id="agenow" type="number" min="18" max="80" bind:value={plan.currentAge} />
@@ -150,7 +150,9 @@
 						<div class="field">
 							<div class="field-head">
 								<label for="super"
-									>{couple ? 'Combined super balance ($)' : 'Super balance ($)'}</label
+									>{couple
+										? 'Current combined super balance ($)'
+										: 'Current super balance ($)'}</label
 								>
 								<Help
 									text="Your superannuation balance today — the main pot most people draw on in retirement. Cash savings (which earn a different rate) can be added separately later."
@@ -173,6 +175,40 @@
 								oninput={(e) => (plan.superReturn = (Number(e.currentTarget.value) || 0) / 100)}
 							/>
 						</div>
+
+						{#if plan.currentAge < plan.retireAge}
+							<div class="field">
+								<div class="field-head">
+									<label for="salary"
+										>{couple
+											? 'Salary before retirement ($/yr, combined)'
+											: 'Salary before retirement ($/yr)'}</label
+									>
+									<Help
+										text="Your (pre-tax) salary while you're still working. Only the share going into super matters here — set that percentage below. The rest of your salary is your living money and isn't modelled. Leave blank if you're already retired."
+									/>
+								</div>
+								<MoneyInput id="salary" bind:value={plan.salary} />
+							</div>
+							<div class="field">
+								<div class="field-head">
+									<label for="contribpct">% of salary into super</label>
+									<Help
+										text="The employer contribution (SG) is 12%. Add any salary sacrifice on top — e.g. 12% + a 5% sacrifice = 17%. This share (less the 15% contributions tax) is added to your super each year until you retire."
+									/>
+								</div>
+								<input
+									id="contribpct"
+									type="number"
+									step="0.5"
+									min="0"
+									max="100"
+									value={pct(plan.superContribRate)}
+									oninput={(e) =>
+										(plan.superContribRate = (Number(e.currentTarget.value) || 0) / 100)}
+								/>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</section>
@@ -325,26 +361,22 @@
 					aria-expanded={open.income}
 					onclick={() => (open.income = !open.income)}
 				>
-					<span>Income</span>
+					<span>Income in retirement</span>
 					<span class="acc-chev" class:open={open.income}>›</span>
 				</button>
 				{#if open.income}
 					<div class="acc-body">
 						<p class="field-note">
-							Part-time work, rent or other income during retirement.
+							Part-time work, rent, or other. Set the ages it applies.
 							<Help
-								text="It reduces how much you draw from your pot for the years you receive it, and is taxed at your marginal rate (your super pension isn't)."
+								text="Each income applies over the ages you set and reduces how much you draw from your pot, taxed at your marginal rate (your super pension isn't). To model a salary paying into super while you're still working, use the Superannuation section instead."
 							/>
 						</p>
 						{#each plan.incomeSources as inc, i (inc)}
 							<div class="bank-acct">
 								<div class="bank-acct-top">
 									<div class="field" style="flex: 1">
-										<label for={`inc-amt-${i}`}
-											>{inc.toSuper ? 'Salary ($/yr)' : 'Amount ($/yr)'}{couple
-												? ', combined'
-												: ''}</label
-										>
+										<label for={`inc-amt-${i}`}>Amount ($/yr){couple ? ', combined' : ''}</label>
 										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
 									</div>
 									<button
@@ -393,33 +425,6 @@
 											text="Tick if this income rises with inflation (most wages and rents do) — its buying power stays the same. Untick for an amount fixed in dollars (e.g. a level annuity); its real value then shrinks each year."
 										/>
 									</label>
-									<label class="check">
-										<input type="checkbox" bind:checked={inc.toSuper} />
-										<span>Pays into super</span>
-										<Help
-											text="Tick if this is a salary you're still earning, and only part of it goes into super — the employer contribution (SG, currently 12%) plus any salary sacrifice. Set the percentage below. That share is added to super over the years shown (less the 15% contributions tax); the rest of the salary is your living money and isn't modelled. Useful for the years before retirement."
-										/>
-									</label>
-									{#if inc.toSuper}
-										<div class="field">
-											<div class="field-head">
-												<label for={`inc-superpct-${i}`}>% of salary into super</label>
-												<Help
-													text="The employer SG is 12%. Add any salary sacrifice on top — e.g. 12% + a 5% sacrifice = 17%."
-												/>
-											</div>
-											<input
-												id={`inc-superpct-${i}`}
-												type="number"
-												step="0.5"
-												min="0"
-												max="100"
-												value={pct(inc.superRate)}
-												oninput={(e) =>
-													(inc.superRate = (Number(e.currentTarget.value) || 0) / 100)}
-											/>
-										</div>
-									{/if}
 								</div>
 							</div>
 						{/each}

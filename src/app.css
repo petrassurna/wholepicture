@@ -279,6 +279,26 @@ a {
 	color: #93a0b0;
 	margin: 12px 0 0;
 }
+.chart-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 18px;
+	margin: 2px 0 6px;
+}
+.chart-legend .lg-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--navy);
+}
+.chart-legend .lg-item i {
+	width: 11px;
+	height: 3px;
+	border-radius: 2px;
+	flex-shrink: 0;
+}
 .chart-card .chart-cta {
 	display: block;
 	width: 100%;

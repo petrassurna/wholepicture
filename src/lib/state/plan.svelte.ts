@@ -9,14 +9,14 @@ import { Household } from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
 type BankInput = { name: string; amount: number; rate: number };
+// Retirement income only — a salary paying into super is handled in the super
+// fields below, not here.
 type IncomeInput = {
 	label: string;
 	amount: number;
 	fromAge: number;
 	toAge: number;
 	indexed: boolean;
-	toSuper: boolean;
-	superRate: number; // fraction of the amount paid into super (SG default 0.12)
 };
 
 // How often a spending amount recurs, and how many times a year that is.
@@ -117,6 +117,10 @@ class Plan {
 	// Superannuation
 	superBalance = $state(DEFAULTS.single.superBalance);
 	superReturn = $state(0.07); // nominal p.a.
+	// Contributions while still working (accumulation): salary and the share of it
+	// paid into super (SG 12% + any salary sacrifice). Only used if currentAge < retireAge.
+	salary = $state(0);
+	superContribRate = $state(0.12);
 
 	// Bank accounts / term deposits — each with its own rate
 	bankAccounts = $state<BankInput[]>([]);
@@ -150,19 +154,27 @@ class Plan {
 	}
 
 	get incomes(): IncomeSource[] {
-		return this.incomeSources.map(
-			(s) =>
-				new IncomeSource(
-					s.label,
-					s.amount,
-					s.fromAge,
-					s.toAge,
-					true,
-					s.indexed ?? true,
-					s.toSuper ?? false,
-					s.superRate ?? 0.12
-				)
+		// Retirement income (offsets drawdown), plus — while still working — a salary
+		// contributing to super. The salary is modelled as a toSuper source over the
+		// accumulation years; the domain treats it as a contribution, not spendable income.
+		const sources = this.incomeSources.map(
+			(s) => new IncomeSource(s.label, s.amount, s.fromAge, s.toAge, true, s.indexed ?? true)
 		);
+		if (this.salary > 0 && this.currentAge < this.retireAge) {
+			sources.push(
+				new IncomeSource(
+					'Salary',
+					this.salary,
+					this.currentAge,
+					this.retireAge - 1,
+					true,
+					true,
+					true,
+					this.superContribRate
+				)
+			);
+		}
+		return sources;
 	}
 
 	/** The taxpayer(s): filing status + income sources. */
@@ -274,9 +286,7 @@ class Plan {
 			amount: 0,
 			fromAge: this.retireAge,
 			toAge: this.retireAge + 5,
-			indexed: true,
-			toSuper: false,
-			superRate: 0.12
+			indexed: true
 		});
 	}
 
@@ -306,6 +316,8 @@ class Plan {
 				if (typeof d.planToAge === 'number') this.planToAge = d.planToAge;
 				if (typeof d.superBalance === 'number') this.superBalance = d.superBalance;
 				if (typeof d.superReturn === 'number') this.superReturn = d.superReturn;
+				if (typeof d.salary === 'number') this.salary = d.salary;
+				if (typeof d.superContribRate === 'number') this.superContribRate = d.superContribRate;
 				if (typeof d.inflation === 'number') this.inflation = d.inflation;
 				if (typeof d.downturn === 'number') this.downturn = d.downturn;
 				if (typeof d.recoveryYears === 'number') this.recoveryYears = d.recoveryYears;
@@ -335,9 +347,7 @@ class Plan {
 							amount: s.amount,
 							fromAge: s.fromAge,
 							toAge: s.toAge,
-							indexed: typeof s.indexed === 'boolean' ? s.indexed : true,
-							toSuper: typeof s.toSuper === 'boolean' ? s.toSuper : false,
-							superRate: typeof s.superRate === 'number' ? s.superRate : 0.12
+							indexed: typeof s.indexed === 'boolean' ? s.indexed : true
 						}));
 				}
 				if (Array.isArray(d.spendItems)) {
@@ -382,6 +392,8 @@ class Plan {
 			planToAge: this.planToAge,
 			superBalance: this.superBalance,
 			superReturn: this.superReturn,
+			salary: this.salary,
+			superContribRate: this.superContribRate,
 			bankAccounts: this.bankAccounts,
 			incomeSources: this.incomeSources,
 			spendItems: this.spendItems,
@@ -409,6 +421,8 @@ class Plan {
 		this.retireAge = 67;
 		this.planToAge = 90;
 		this.superReturn = 0.07;
+		this.salary = 0;
+		this.superContribRate = 0.12;
 		this.bankAccounts = [];
 		this.incomeSources = [];
 		this.spendItems = defaultSpendItems('single');

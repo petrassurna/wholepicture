@@ -40,8 +40,9 @@
 		<H2 text="Tax" />
 		<ul>
 			<li>Super pension income from age 60, and super fund earnings in the pension phase, are treated as tax-free.</li>
+			<li>Only super up to the transfer balance cap (about $1.9 million) can sit in the tax-free pension phase; the tool treats <em>all</em> your super as tax-free, so it may be optimistic if your balance is very large.</li>
 			<li>Bank and term-deposit interest is taxed at your marginal rate, with the Seniors and Pensioners Tax Offset (SAPTO), the Low Income Tax Offset and the Medicare levy applied.</li>
-			<li>Couples are assessed as two individuals, splitting assessable income 50/50.</li>
+			<li>Couples are assessed as two individuals splitting assessable income 50/50, on <strong>one shared timeline</strong> — the same ages, retiring together. Different ages, and the survivor case when one partner dies (spending drops, and the pension moves to the single rate), are not modelled.</li>
 			<li>Tax rates use the {taxYear} resident scale. Rates change each year and are treated as an estimate; per-item deductions and every individual circumstance are not modelled.</li>
 		</ul>
 
@@ -54,6 +55,7 @@
 			<li>Estimated using the <strong>assets test only</strong>, with rates as at {pensionAsAt}.</li>
 			<li>Assumes you own your home — your home is exempt from the assets test and is not counted.</li>
 			<li>The income test, deeming, and non-homeowner rules are not modelled and could change the result.</li>
+			<li>Because the income test isn't modelled, <strong>earning wages in retirement won't reduce the pension estimate here</strong> — but in reality it can, so the tool may be optimistic if you keep working while on a part pension.</li>
 			<li>Confirm your position with <a href="https://www.servicesaustralia.gov.au/age-pension" target="_blank" rel="noopener">Services Australia</a>.</li>
 		</ul>
 
@@ -86,12 +88,22 @@
 				The effect is a small tax difference that nudges your <em>final</em> balance, not whether the money
 				lasts. But it does mean these figures are an estimate, and there may be differences here.
 			</li>
+			<li>
+				The tool doesn't enforce super <strong>preservation rules</strong> — you generally can't access super
+				before about age 60, but it won't stop you setting an earlier retirement age.
+			</li>
 		</ul>
 
 		<H2 text="Investment returns and the bad case" />
 		<ul>
 			<li>A single long-run average return that you set, the same each year.</li>
+			<li>
+				<strong>Enter your return net of fees.</strong> There is no separate fees input, so your return should
+				already have super and investment fees (typically ~0.5–1.5% a year) taken out — otherwise the projection
+				will be too optimistic.
+			</li>
 			<li>The bad case applies a one-off market downturn right at retirement, then a recovery over a few years — to show sequence-of-returns risk (an early loss while you are drawing down does lasting damage).</li>
+			<li>The bad case is a <strong>single illustrative stress test you set</strong>, not a statistical worst case or a probability — real outcomes could be milder, or considerably worse.</li>
 			<li>Inflation is a single rate applied to everything; real-world costs like health and aged care can rise faster than general inflation.</li>
 		</ul>
 

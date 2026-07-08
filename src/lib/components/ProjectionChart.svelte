@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { project, type Projection, type Assumptions } from '$lib/domain/projection';
 	import { plan } from '$lib/state/plan.svelte';
+	import Help from './Help.svelte';
 
 	// Household toggle is a home-page preset only (it just swaps default numbers).
 	let { household = false }: { household?: boolean } = $props();
@@ -46,7 +47,7 @@
 	const x = (age: number) => 44 + ((age - t0) / (plan.planToAge - t0)) * 340;
 	// Plot spans y 68 (top) → 188 (bottom); the 68 start leaves clear space under the
 	// two-row legend (Average / Bad case).
-	const y = (b: number) => 188 - (b / balAxisMax) * 120;
+	const y = (b: number) => 188 - (b / balAxisMax) * 148;
 
 	const axisTicks = $derived.by(() => {
 		const span = plan.planToAge - t0;
@@ -244,6 +245,22 @@
 		{/if}
 	</p>
 {:else}
+	<div class="chart-legend">
+		<span class="lg-item">
+			<i style="background: #0f2540"></i>
+			<span>Average · {label(avgOut)}</span>
+			<Help
+				text="Steady growth at your assumed return each year — if markets behave normally. Adjust the return (Superannuation) or inflation (Assumptions)."
+			/>
+		</span>
+		<span class="lg-item">
+			<i style="background: #d9534f"></i>
+			<span>Bad case · {label(badOut)}</span>
+			<Help
+				text="A market crash right at retirement, then a slow recovery — an early slump while you're drawing down makes the money run out sooner. Adjust it in Assumptions."
+			/>
+		</span>
+	</div>
 	<svg
 		viewBox="0 0 400 216"
 		role="img"
@@ -266,36 +283,17 @@
 		{#if plan.currentAge < plan.retireAge}
 			<line
 				x1={x(plan.retireAge)}
-				y1="68"
+				y1="40"
 				x2={x(plan.retireAge)}
 				y2="188"
 				stroke="#c9a24b"
 				stroke-width="1"
 				stroke-dasharray="3 3"
 			/>
-			<text x={x(plan.retireAge)} y="64" font-size="10" fill="#a9812f" text-anchor="middle"
+			<text x={x(plan.retireAge)} y="36" font-size="10" fill="#a9812f" text-anchor="middle"
 				>Retire {plan.retireAge}</text
 			>
 		{/if}
-
-		<g style="cursor: help">
-			<title
-				>Average — your savings grow steadily at your assumed return every year, the way it looks if markets behave normally over your retirement. Adjust the return in the Superannuation section and inflation in the Assumptions section.</title
-			>
-			<circle cx="48" cy="12.5" r="3.2" fill="#0f2540" />
-			<text x="57" y="16" font-size="13" font-weight="600" fill="#0f2540"
-				>Average · {label(avgOut)}</text
-			>
-		</g>
-		<g style="cursor: help">
-			<title
-				>Bad case — a market crash right at retirement (the downturn you set), then a recovery over a few years. It shows sequence-of-returns risk: a slump while you're drawing money out does lasting damage, so the money can run out sooner even though the market later recovers. Adjust the downturn size and recovery years in the Assumptions section.</title
-			>
-			<circle cx="48" cy="29.5" r="3.2" fill="#d9534f" />
-			<text x="57" y="33" font-size="13" font-weight="600" fill="#d9534f"
-				>Bad case · {label(badOut)}</text
-			>
-		</g>
 
 		<g class="draw">
 			<polyline
@@ -330,7 +328,7 @@
 			<g pointer-events="none">
 				<line
 					x1={hx}
-					y1="68"
+					y1="40"
 					x2={hx}
 					y2="188"
 					stroke="#cbd3dd"
@@ -339,7 +337,7 @@
 				/>
 				<circle cx={hx} cy={y(hAvg.balance)} r="3.4" fill="#0f2540" />
 				<circle cx={hx} cy={y(hBad.balance)} r="3.4" fill="#d9534f" />
-				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 60)`}>
+				<g transform={`translate(${flip ? hx - 156 : hx + 10}, 44)`}>
 					<rect width="146" height="58" rx="6" fill="#0f2540" opacity="0.96" />
 					<text x="10" y="18" font-size="12" font-weight="700" fill="#fff">Age {hAvg.age}</text>
 					<circle cx="13" cy="33" r="3" fill="#8fa6c4" />
