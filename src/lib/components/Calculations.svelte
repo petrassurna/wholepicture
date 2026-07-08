@@ -19,10 +19,11 @@
 
 	const proj = $derived(project(plan.assets, plan.buildAssumptions(), scenario));
 
-	// The age to inspect, kept within the drawdown range without an effect (which
-	// would read and write `age` and loop). The input binds to `shownAge`.
-	const ageLo = $derived(plan.retireAge);
-	const ageHi = $derived(Math.max(plan.retireAge, plan.planToAge - 1));
+	// The age to inspect, kept within range without an effect (which would read and
+	// write `age` and loop). The input binds to `shownAge`. Range spans the whole
+	// plan — the accumulation (working) years as well as drawdown.
+	const ageLo = $derived(plan.currentAge);
+	const ageHi = $derived(Math.max(plan.currentAge, plan.planToAge - 1));
 	const shownAge = $derived(Math.min(Math.max(age, ageLo), ageHi));
 
 	const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU');
@@ -32,6 +33,7 @@
 
 	interface Year {
 		A: number;
+		phase: 'accumulation' | 'drawdown';
 		opening: number;
 		growth: number;
 		growthLabel: string;
@@ -41,6 +43,8 @@
 		income: number;
 		pension: number;
 		pensionEq: string;
+		contribution: number;
+		contributionEq: string;
 		afterCashflow: number;
 		cashflowEq: string;
 		closing: number;
@@ -56,6 +60,46 @@
 		const opening = pt.balance;
 		const R = plan.superReturn;
 		const I = plan.inflation;
+		const graphNext0 = nextPt?.balance ?? null;
+
+		// --- Accumulation (still working): contribute, grow with the 15% earnings tax ---
+		if (A < plan.retireAge) {
+			const growth = realReturn(R * 0.85, I); // super earnings taxed 15%
+			const contribution = plan.contributionAt(A);
+			const afterCashflow = opening + contribution;
+			const closing = afterCashflow * (1 + growth);
+			const growthEq = `${pctStr(R)} × 0.85 = ${pctStr(R * 0.85)} after the 15% earnings tax, then (1 + ${pctStr(R * 0.85)}) ÷ (1 + ${pctStr(I)}) − 1 = ${pctStr(growth)}`;
+			const contributionEq =
+				contribution > 0.5
+					? `${num(plan.salary)} × ${pctStr(plan.superContribRate)} × 0.85 (after 15% contributions tax) = ${num(contribution)}`
+					: '';
+			const cashflowEq =
+				contribution > 0.5
+					? `${num(opening)} + ${num(contribution)} = ${num(afterCashflow)}`
+					: `${num(opening)} (no contribution set)`;
+			const matches = graphNext0 !== null && Math.abs(closing - graphNext0) < 1;
+			return {
+				A,
+				phase: 'accumulation',
+				opening,
+				growth,
+				growthLabel: 'Real return while working (super earnings taxed 15%)',
+				growthEq,
+				spend: 0,
+				tax: 0,
+				income: 0,
+				pension: 0,
+				pensionEq: '',
+				contribution,
+				contributionEq,
+				afterCashflow,
+				cashflowEq,
+				closing,
+				graphNext: graphNext0,
+				matches
+			};
+		}
+
 		const t = A - plan.retireAge;
 		const gNormal = realReturn(R, I);
 		const recoveryReturn =
@@ -116,6 +160,7 @@
 
 		return {
 			A,
+			phase: 'drawdown',
 			opening,
 			growth,
 			growthLabel,
@@ -124,12 +169,14 @@
 			tax,
 			income,
 			pension,
+			pensionEq,
+			contribution: 0,
+			contributionEq: '',
 			afterCashflow,
 			cashflowEq,
 			closing,
 			graphNext,
-			matches,
-			pensionEq
+			matches
 		};
 	}
 
@@ -137,7 +184,7 @@
 
 	const rows = $derived.by(() => {
 		const out: Year[] = [];
-		for (let A = plan.retireAge; A <= plan.planToAge - 1; A++) {
+		for (let A = plan.currentAge; A <= plan.planToAge - 1; A++) {
 			const y = computeYear(A);
 			if (y && y.opening > 0) out.push(y);
 		}
@@ -203,6 +250,12 @@
 						<span class="calc-label">Opening balance at age {calc.A}</span>
 						<code>{money(calc.opening)}</code>
 					</li>
+					{#if calc.contributionEq}
+						<li>
+							<span class="calc-label">Super contribution this year (salary × rate, less 15% tax)</span>
+							<code>{calc.contributionEq}</code>
+						</li>
+					{/if}
 					{#if calc.pensionEq}
 						<li>
 							<span class="calc-label"
@@ -212,12 +265,16 @@
 						</li>
 					{/if}
 					<li>
-						<span class="calc-label">
-							Balance after the year's cash flow (spending{calc.tax > 0.5 ? ', tax' : ''}{calc.income >
-							0.5
-								? ', income'
-								: ''}{calc.pension > 0.5 ? ', pension' : ''})
-						</span>
+						{#if calc.phase === 'accumulation'}
+							<span class="calc-label">Balance after this year's contribution</span>
+						{:else}
+							<span class="calc-label">
+								Balance after the year's cash flow (spending{calc.tax > 0.5 ? ', tax' : ''}{calc.income >
+								0.5
+									? ', income'
+									: ''}{calc.pension > 0.5 ? ', pension' : ''})
+							</span>
+						{/if}
 						<code>{calc.cashflowEq}</code>
 					</li>
 					<li>
