@@ -278,14 +278,24 @@
 			>
 		{/if}
 
-		<circle cx="48" cy="12.5" r="3.2" fill="#0f2540" />
-		<text x="57" y="16" font-size="13" font-weight="600" fill="#0f2540"
-			>Average · {label(avgOut)}</text
-		>
-		<circle cx="48" cy="29.5" r="3.2" fill="#d9534f" />
-		<text x="57" y="33" font-size="13" font-weight="600" fill="#d9534f"
-			>Bad case · {label(badOut)}</text
-		>
+		<g style="cursor: help">
+			<title
+				>Average — your savings grow steadily at your assumed return every year, the way it looks if markets behave normally over your retirement. Adjust the return in the Superannuation section and inflation in the Assumptions section.</title
+			>
+			<circle cx="48" cy="12.5" r="3.2" fill="#0f2540" />
+			<text x="57" y="16" font-size="13" font-weight="600" fill="#0f2540"
+				>Average · {label(avgOut)}</text
+			>
+		</g>
+		<g style="cursor: help">
+			<title
+				>Bad case — a market crash right at retirement (the downturn you set), then a recovery over a few years. It shows sequence-of-returns risk: a slump while you're drawing money out does lasting damage, so the money can run out sooner even though the market later recovers. Adjust the downturn size and recovery years in the Assumptions section.</title
+			>
+			<circle cx="48" cy="29.5" r="3.2" fill="#d9534f" />
+			<text x="57" y="33" font-size="13" font-weight="600" fill="#d9534f"
+				>Bad case · {label(badOut)}</text
+			>
+		</g>
 
 		<g class="draw">
 			<polyline
