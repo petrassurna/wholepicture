@@ -42,6 +42,9 @@ export interface TaxScale {
 		readonly rate: number;
 		/** No levy below this income; a 10c/$1 shade-in applies just above it. */
 		readonly threshold: Record<Filing, number>;
+		/** Working-age (non-senior) single low-income threshold — used for PAYG
+		 *  take-home, where the senior threshold above doesn't apply. */
+		readonly generalThreshold: number;
 	};
 	readonly sapto: Record<Filing, Offset>; // Seniors & Pensioners Tax Offset
 	readonly lito: Lito; // Low Income Tax Offset
@@ -66,7 +69,9 @@ export const TAX_2024_25: TaxScale = {
 		rate: 0.02,
 		// Senior/pensioner (SAPTO-eligible) low-income thresholds. Couple is the
 		// senior family threshold split in two, tested against each person.
-		threshold: { single: 43_020, couple: 29_943 }
+		threshold: { single: 43_020, couple: 29_943 },
+		// Working-age single low-income threshold (used for pre-retirement PAYG).
+		generalThreshold: 27_222
 	},
 	sapto: {
 		single: { max: 2_230, threshold: 32_279, taper: 0.125 },
@@ -131,4 +136,23 @@ export function taxOwed(taxable: number, filing: Filing, scale: TaxScale = CURRE
 	const netIncomeTax = Math.max(0, incomeTax - sapto - lito);
 	const medicare = medicareLevy(t, scale.medicare.rate, scale.medicare.threshold[filing]);
 	return { taxable: t, incomeTax, sapto, lito, medicare, total: netIncomeTax + medicare };
+}
+
+/**
+ * PAYG income tax on ONE person's working-age salary: marginal tax + Medicare
+ * levy − LITO. Returns the tax payable (so take-home = salary − paygTax).
+ *
+ * SAPTO is deliberately excluded — it's the Seniors & Pensioners Tax Offset, which
+ * a pre-retirement earner isn't eligible for; applying it (as taxOwed does) would
+ * understate PAYG on lower salaries. Medicare uses the working-age general
+ * low-income threshold, not the senior one. This is for showing pre-retirement
+ * take-home pay only — the projection engine runs on retirement-age income.
+ */
+export function paygTax(salary: number, scale: TaxScale = CURRENT): number {
+	const s = Math.max(0, salary);
+	const incomeTax = marginalTax(s, scale.brackets);
+	const lito = litoOffset(s, scale.lito);
+	const netIncomeTax = Math.max(0, incomeTax - lito);
+	const medicare = medicareLevy(s, scale.medicare.rate, scale.medicare.generalThreshold);
+	return netIncomeTax + medicare;
 }

@@ -90,3 +90,32 @@ describe('income extends longevity end-to-end', () => {
 		expect(lastsPast(withInc)).toBeGreaterThan(lastsPast(none));
 	});
 });
+
+describe('retirement income feeds the Age Pension income test (UI→pension wiring)', () => {
+	// Mirrors the UI path: an Income row becomes a taxable, non-super IncomeSource on
+	// the Household (exactly what plan.incomes builds), and Household.agePensionAt feeds
+	// it as actual income into the pension's income test. Guards the wiring from silently
+	// regressing back to assets-test-only. $150k financial assets sits under the assets
+	// free area, so any reduction here is the INCOME test binding.
+	const fin = 150_000;
+	const uiIncomeRow = (amount: number, from = 60, to = 100) =>
+		new IncomeSource('income', amount, from, to, true, true); // taxable, not toSuper
+
+	it('adding a retirement income row lowers the modelled pension', () => {
+		const before = new Household('single', []).agePensionAt(fin, 70);
+		const after = new Household('single', [uiIncomeRow(45_000)]).agePensionAt(fin, 70);
+		expect(before).toBeGreaterThan(after); // income test now binds
+		expect(after).toBeGreaterThanOrEqual(0);
+	});
+
+	it('only counts income while its age window is active', () => {
+		// A job that ends before pension age must not affect the pension years.
+		const earlyJob = new Household('single', [uiIncomeRow(40_000, 60, 66)]).agePensionAt(fin, 70);
+		const none = new Household('single', []).agePensionAt(fin, 70);
+		expect(earlyJob).toBeCloseTo(none, 6);
+	});
+
+	it('enough income drives the pension to zero', () => {
+		expect(new Household('single', [uiIncomeRow(90_000)]).agePensionAt(fin, 70)).toBe(0);
+	});
+});

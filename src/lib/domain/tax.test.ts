@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { taxOwed, TAX_2024_25 } from './tax';
+import { taxOwed, paygTax, TAX_2024_25 } from './tax';
 
 // All expected values are hand-calculated against the 2024-25 scale.
 // Brackets: 0 | 16% >18,200 | 30% >45,000 | 37% >135,000 | 45% >190,000
@@ -84,6 +84,39 @@ describe('taxOwed (couple, per person)', () => {
 
 	it('a $28k-each couple (below every threshold) pays nothing', () => {
 		expect(taxOwed(28_000, 'couple').total).toBe(0);
+	});
+});
+
+describe('paygTax (working-age salary — no SAPTO)', () => {
+	it('is zero on no salary and clamps negatives', () => {
+		expect(paygTax(0)).toBe(0);
+		expect(paygTax(-5_000)).toBe(0);
+	});
+
+	it('is zero at the tax-free threshold', () => {
+		// (18,200 − 18,200)×16% = 0; below the 27,222 Medicare threshold too.
+		expect(paygTax(18_200)).toBe(0);
+	});
+
+	it('matches the hand calc for a $100k salary', () => {
+		// marginal = 26,800×16% + 55,000×30% = 4,288 + 16,500 = 20,788
+		// LITO = 0 (out at 66,667); Medicare = 2%×100,000 = 2,000
+		// total = 22,788
+		expect(paygTax(100_000)).toBeCloseTo(22_788, 6);
+	});
+
+	it('excludes SAPTO — a $50k worker pays more than a $50k retiree', () => {
+		// marginal 5,788 − LITO 250 = 5,538; Medicare = 2%×50,000 = 1,000 → 6,538.
+		// No SAPTO (that's the point): taxOwed(50k) is 6,221 thanks to its seniors offset.
+		expect(paygTax(50_000)).toBeCloseTo(6_538, 6);
+		expect(paygTax(50_000)).toBeGreaterThan(taxOwed(50_000, 'single').total);
+	});
+
+	it('applies the Medicare shade-in just above the general threshold', () => {
+		// marginal = (30,000 − 18,200)×16% = 1,888; LITO = 700 → net income tax 1,188
+		// Medicare = min(2%×30,000=600, 10%×(30,000−27,222)=277.8) = 277.8
+		// total = 1,465.8
+		expect(paygTax(30_000)).toBeCloseTo(1_465.8, 6);
 	});
 });
 

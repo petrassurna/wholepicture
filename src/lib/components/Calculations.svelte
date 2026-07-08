@@ -131,8 +131,8 @@
 		const tax = plan.taxOn(0, A);
 		const pension = plan.pensionAt(opening, A);
 
-		// Show where the pension figure comes from (assets test, homeowner v1).
-		// Show the pension working whenever it's switched on — including why it's $0.
+		// Show where the pension figure comes from: both means tests, paying the lower
+		// (homeowner v1). Show it working whenever it's switched on — including why it's $0.
 		let pensionEq = '';
 		if (plan.includePension) {
 			const s = CURRENT_PENSION;
@@ -140,15 +140,28 @@
 			const freeArea = s.assetFreeArea.homeowner[plan.household];
 			if (A < s.eligibilityAge) {
 				pensionEq = `age ${A} is under the pension age (${s.eligibilityAge}) → $0`;
-			} else if (opening <= freeArea) {
-				pensionEq = `assets ${num(opening)} are under the ${num(freeArea)} free area → full pension ${num(max)}`;
 			} else {
-				const reduction = (opening - freeArea) * s.taperPerDollar;
-				const raw = max - reduction;
-				pensionEq =
-					raw > 0
-						? `${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(max)} − ${num(reduction)} = ${num(pension)}`
-						: `${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(max)} − ${num(reduction)} = ${num(raw)} → clamped to $0 (assets above the cut-off)`;
+				// Assets test.
+				const assetsReduction = Math.max(0, opening - freeArea) * s.taperPerDollar;
+				const assetsTest = Math.max(0, max - assetsReduction);
+				// Income test: deemed income on financial assets + actual income (wages, rent).
+				const thr = s.deeming.threshold[plan.household];
+				const deemed =
+					Math.min(opening, thr) * s.deeming.rateLow +
+					Math.max(0, opening - thr) * s.deeming.rateHigh;
+				const assessable = deemed + income;
+				const incFree = s.incomeFreeArea[plan.household];
+				const incomeReduction = Math.max(0, assessable - incFree) * s.incomeTaperPerDollar;
+				const incomeTest = Math.max(0, max - incomeReduction);
+				const clamp = pension <= 0.5 ? ' → clamped to $0' : '';
+				if (assetsTest <= incomeTest) {
+					pensionEq =
+						opening <= freeArea
+							? `assets ${num(opening)} under the ${num(freeArea)} free area → full ${num(max)}; lower than the income test → ${num(pension)}`
+							: `assets test (lower): ${num(max)} − (${num(opening)} − ${num(freeArea)}) × ${s.taperPerDollar} = ${num(pension)}${clamp}`;
+				} else {
+					pensionEq = `income test (lower): deemed ${num(deemed)} + income ${num(income)} = ${num(assessable)}; ${num(max)} − (${num(assessable)} − ${num(incFree)}) × ${s.incomeTaperPerDollar} = ${num(pension)}${clamp}`;
+				}
 			}
 		}
 
@@ -266,7 +279,8 @@
 					{#if calc.pensionEq}
 						<li>
 							<span class="calc-label"
-								>Age Pension for the year (assets test · rates as at {pensionAsAt}; estimate only)</span
+								>Age Pension for the year (assets &amp; income test, lower applies · rates as at
+									{pensionAsAt}; estimate only)</span
 							>
 							<code>{calc.pensionEq}</code>
 						</li>

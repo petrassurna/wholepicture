@@ -27,12 +27,12 @@ A working, chart-first retirement model — a focused but steadily growing slice
 - `income.ts` — `IncomeSource` (amount, age window, `taxable`, `indexed` for inflation, `toSuper` contribution flag, `superRate` share of salary). `grossIncomeAt`/`taxableIncomeAt` (exclude contributions), `contributionsAt` (the `toSuper` share). `RealCtx` deflates non-indexed income.
 - `household.ts` — the `Household` aggregate: filing status + income sources. `taxOn` (a couple splits total assessable income **50/50** and is assessed as two people), `agePensionAt`, and `contributionAt` (applies the 15% concessional contributions tax).
 - `tax.ts` — `taxOwed(taxable, filing, scale)`: marginal brackets + SAPTO + LITO + Medicare levy, in a **swappable tax-year constants table** (currently 2024-25).
-- `pension.ts` — `agePension(age, assets, filing, homeowner, scale)`: the Age Pension **assets test**, single/couple, homeowner, in an indexed constants table (2024-25). Tax-free, from age 67.
+- `pension.ts` — `agePension(age, assets, income, filing, homeowner, scale)`: the Age Pension **assets test and income test (with deeming), paying the lower** — as Centrelink does — single/couple, homeowner, in an indexed constants table. Tax-free, from age 67.
 - `projection.ts` — `project(assets, assumptions, scenario)`: runs an **accumulation phase** (before `retireAge`: contributions in, 15%-earnings-taxed growth, no spending) then **drawdown** (income offset, tax, Age Pension, spend; the bad-case crash is timed to retirement). All the policies (tax, pension, income, contributions) are **injected callbacks** — the engine knows nothing about SAPTO or filing.
 
-**What's modelled:** super (tax-free in pension phase; 15%-taxed earnings in accumulation), bank/term deposits (taxed interest), retirement income (work/rent, indexed or fixed), **salary contributions into super** (SG % + salary sacrifice, 15% contributions tax), single or couple, the **Age Pension** (assets test, phasing in as assets fall), average vs bad-case (sequence-risk) scenarios, and drawdown to a plan-to age with run-out detection.
+**What's modelled:** super (tax-free in pension phase; 15%-taxed earnings in accumulation), bank/term deposits (taxed interest), retirement income (work/rent, indexed or fixed), **salary contributions into super** (SG % + salary sacrifice, 15% contributions tax), single or couple, the **Age Pension** (assets test **and** income test with deeming, paying the lower; phasing in as assets fall), average vs bad-case (sequence-risk) scenarios, and drawdown to a plan-to age with run-out detection.
 
-**What's not (yet):** property, shares, the Age Pension *income* test + deeming, non-homeowner pension rules, concessional-cap enforcement, life events, the wider multi-tab "whole picture" from the vision doc, real accounts / persistence beyond localStorage.
+**What's not (yet):** property, shares, the Age Pension **Work Bonus** (employment-income concession) and non-homeowner pension rules, life events, the wider multi-tab "whole picture" from the vision doc, real accounts / persistence beyond localStorage.
 
 ---
 
@@ -62,7 +62,7 @@ The tax and Age Pension figures are **legislated constants that change several t
 
 Containment in place:
 - Pension constants are date-stamped (`asAt`) and that date is shown to the user; the model page carries a **prominent "estimate only — verify with Services Australia" warning** whenever the pension is on; the calc panel labels the pension line as an estimate.
-- The pension models the **assets test only** — the income test could reduce it further, so it can *overstate* entitlement.
+- The pension runs **both means tests and pays the lower** (assets + income with deeming); the income-test constants (deeming rates/thresholds, income free areas) are as volatile as the rest and must be verified too. The **Work Bonus is not modelled**, so a working retiree's estimate is conservative (never overstated).
 
 Process rule: **before any release, re-verify the tax and pension constants against the ATO and Services Australia, and bump the `asAt` date.** Never present these as an entitlement — always an estimate.
 
@@ -71,7 +71,7 @@ Process rule: **before any release, re-verify the tax and pension constants agai
 ### Known simplifications (accepted for now)
 - The bad-case **crash hits the whole portfolio**, including bank/TDs — unrealistic for cash; a term deposit doesn't crash.
 - **Accumulation applies a 15% earnings-tax drag to every asset**, not just super. Correct for super (the dominant accumulation asset); for a bank account the working-years marginal rate is usually higher, so 15% understates it slightly.
-- **Age Pension v1 is the assets test only**, homeowner, single/couple. The income test + deeming and non-homeowner rules aren't modelled — for asset-rich retirees the assets test almost always binds, so this is close.
+- **Age Pension runs both means tests** (assets + income with deeming, paying the lower), homeowner, single/couple. Not modelled: the **Work Bonus** (employment-income concession — its omission makes the estimate conservative for workers) and non-homeowner thresholds + rent assistance.
 - **Concessional cap enforced on salary sacrifice** — SG + sacrifice is clamped to the $30k concessional cap (`CONCESSIONAL_CAP` in `household.ts`); the excess is dropped, and the UI warns. Division 293 for high earners isn't modelled. After-tax (non-concessional) contributions aren't modelled at all.
 - **No fees input** — the return is entered net of fees (there's no separate fees field). A user entering a gross return over-projects.
 - **Transfer balance cap not modelled** — all super is treated as tax-free pension phase; above ~$1.9M the excess would really stay in accumulation at 15%. Optimistic for very large balances.
@@ -79,7 +79,7 @@ Process rule: **before any release, re-verify the tax and pension constants agai
 - **Preservation age not enforced** — an early retirement age will still draw super, even below ~60 when it's not legally accessible.
 - The **bad case is a single illustrative stress test**, not a probability/Monte Carlo — it's the crash-at-retirement scenario the user sets, not a statistical worst case.
 - **Minimum super drawdown not enforced.** The law forces a minimum annual withdrawal (5% at 65–74, rising to 14% at 95+). The model draws only what you need and leaves the rest compounding tax-free in super. It only diverges for big-balance / low-spend cases (forced withdrawals would move to a taxable account), and it affects *terminal wealth* via a tax drag, not *how long the money lasts*. Super **death-benefits tax** (~15–17% on benefits to non-dependents) is likewise not modelled — relevant only if terminal/estate wealth becomes a headline output.
-- **Statutory constants:** pension rates verified as at **1 July 2026** (`pension.ts`); the SG default is **12%** (final rate, from 1 July 2025); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
+- **Statutory constants:** pension rates (assets **and** income test — max rates, free areas, deeming rates/thresholds) verified as at **1 July 2026** (`pension.ts`); the SG default is **12%** (final rate, from 1 July 2025); tax scale is still **2024-25** (`tax.ts`) and needs the FY2026-27 bracket cut. See the accuracy-risk box above.
 - **Money is a raw `number`** — no `Money`/`Percent`/`Age` value objects yet (the vision/MVP called for integer-cents `Money`).
 - **Inflation is a single rate applied to everything.** Each asset uses its own nominal return deflated by inflation (correct per-asset), spending is flat in real terms, and fixed income erodes — so items *are* treated individually, not by a blanket subtraction. The simplification is one CPI rate for all categories: real retiree costs (health, aged care, rates) typically outrun CPI, so a flat-CPI basket slightly **understates** cost growth → mildly optimistic on longevity. Deliberately not modelling per-category inflation; a single "spend grows above inflation" knob is the cheap future option if wanted.
 
@@ -91,7 +91,7 @@ Prioritised, with the reasoning behind the order:
 
 1. **Fix the `Asset` doc comment.** It promises "add property/shares without touching the engine," which isn't true (see #5). Cheap honesty fix.
 2. **Update the tax + pension scales to the current year** (`TAX_2026_27`, the 16%→15% cut; latest pension rates) — a data edit when wanted.
-3. **Age Pension follow-ups:** the income test + deeming, and non-homeowner thresholds + rent assistance. Adds accuracy for renters and income-rich retirees; the assets-test v1 covers the common case.
+3. **Age Pension follow-ups:** the **Work Bonus** (employment-income concession), and non-homeowner thresholds + rent assistance. The income test + deeming is now done; these remaining pieces mainly help working retirees and renters.
 4. **Enforce the concessional contributions cap** ($30k/yr) and optionally Division 293 — small guards on the accumulation inputs.
 5. **`Money` value object — when the domain stabilises.** Foundational and mechanical (touches everything), so it only gets more expensive; but for an illustrative tool the float-drift risk is low, so not urgent. Do it before numbers drive real advice or hit a DB.
 6. **Injected scenario / drawdown strategies — when the second case arrives.** Today the engine hardcodes the crash/recovery path and pro-rata drawdown. The seam is obvious; extracting it early would be premature abstraction.

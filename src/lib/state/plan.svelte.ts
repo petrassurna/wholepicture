@@ -5,7 +5,12 @@
 import { Super, BankAccount, type Asset } from '$lib/domain/assets';
 import { realReturn, type Assumptions } from '$lib/domain/projection';
 import { IncomeSource } from '$lib/domain/income';
-import { Household, CONCESSIONAL_CAP, salarySacrificeRoom } from '$lib/domain/household';
+import {
+	Household,
+	CONCESSIONAL_CAP,
+	CONTRIBUTIONS_TAX,
+	salarySacrificeRoom
+} from '$lib/domain/household';
 import type { Filing } from '$lib/domain/tax';
 
 type BankInput = { name: string; amount: number; rate: number };
@@ -213,6 +218,37 @@ class Plan {
 		return new Household(this.household, this.incomes);
 	}
 
+	/** PAYG tax on the pre-retirement salary (gross, before any salary sacrifice). */
+	get salaryTax(): number {
+		return this.taxUnit.paygOnSalary(this.salary);
+	}
+
+	/** Take-home pay from the salary after PAYG tax. */
+	get salaryTakeHome(): number {
+		return Math.max(0, this.salary - this.salaryTax);
+	}
+
+	/** Yearly surplus: take-home pay less spending (a plain observation, not advice). */
+	get salarySurplus(): number {
+		return this.salaryTakeHome - this.spend;
+	}
+
+	/** Concessional-cap room still available for salary sacrifice — the $30k cap less
+	 *  the employer SG and any sacrifice already entered. Caps what's actually allowed. */
+	get sacrificeRoomLeft(): number {
+		return Math.max(0, this.salarySacrificeCap - this.effectiveSacrifice);
+	}
+
+	/** Gross employer Super Guarantee contribution for the year (salary × SG rate). */
+	get sgContribution(): number {
+		return this.salary * this.sgRate;
+	}
+
+	/** What the SG actually adds to super, after the 15% concessional contributions tax. */
+	get sgIntoSuper(): number {
+		return this.sgContribution * (1 - CONTRIBUTIONS_TAX);
+	}
+
 	/** Real-terms context so non-indexed income erodes by inflation over the plan. */
 	get realCtx() {
 		return { startAge: this.retireAge, inflation: this.inflation };
@@ -256,7 +292,7 @@ class Plan {
 
 	/** Tax-free Age Pension for the year, given the opening financial assets. */
 	pensionAt(financialAssets: number, age: number): number {
-		return this.includePension ? this.taxUnit.agePensionAt(financialAssets, age) : 0;
+		return this.includePension ? this.taxUnit.agePensionAt(financialAssets, age, this.realCtx) : 0;
 	}
 
 	/** Net super contribution landing in the fund at an age (accumulation phase). */

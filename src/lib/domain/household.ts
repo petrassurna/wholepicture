@@ -8,7 +8,7 @@
 // assessed per person via taxOwed and summed — which is what gives a couple two
 // tax-free thresholds and two SAPTOs.
 
-import { taxOwed, CURRENT, type Filing, type TaxScale } from './tax';
+import { taxOwed, paygTax, CURRENT, type Filing, type TaxScale } from './tax';
 import {
 	grossIncomeAt,
 	taxableIncomeAt,
@@ -19,7 +19,7 @@ import {
 import { agePension } from './pension';
 
 /** Concessional (before-tax) super contributions are taxed 15% going into the fund. */
-const CONTRIBUTIONS_TAX = 0.15;
+export const CONTRIBUTIONS_TAX = 0.15;
 
 /** Annual concessional contributions cap (employer SG + salary sacrifice + personal
  *  deductible), 2024–25 onward. Today's dollars; indexes ~with wages over time. */
@@ -60,10 +60,21 @@ export class Household {
 		return 2 * taxOwed(assessable / 2, 'couple', this.scale).total;
 	}
 
-	/** Age Pension (assets test) payable given the year's financial assets. Tax-free;
-	 *  v1 assumes the household owns its home (as the spending model does). */
-	agePensionAt(financialAssets: number, age: number): number {
-		return agePension(age, financialAssets, this.filing, true);
+	/** PAYG tax on a working-age salary (before retirement). A couple's COMBINED
+	 *  salary splits 50/50 and is assessed per person — mirroring taxOn — so each
+	 *  gets their own tax-free threshold; no SAPTO applies to working-age income. */
+	paygOnSalary(salary: number): number {
+		if (this.filing === 'single') return paygTax(salary, this.scale);
+		return 2 * paygTax(salary / 2, this.scale);
+	}
+
+	/** Age Pension payable given the year's financial assets. Runs both means tests and
+	 *  returns the lower — the income test uses deemed income on those assets plus the
+	 *  household's actual income (wages, rent) this year. Tax-free; assumes a homeowner
+	 *  (as the spending model does). */
+	agePensionAt(financialAssets: number, age: number, ctx?: RealCtx): number {
+		const actualIncome = this.grossIncomeAt(age, ctx);
+		return agePension(age, financialAssets, actualIncome, this.filing, true);
 	}
 
 	/** Net super contribution landing in the fund at an age — the gross amount less

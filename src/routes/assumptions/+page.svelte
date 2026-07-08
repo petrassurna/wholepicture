@@ -52,16 +52,17 @@
 			thresholds change several times a year, so treat it with caution and confirm your actual entitlement.
 		</p>
 		<ul>
-			<li>Estimated using the <strong>assets test only</strong>, with rates as at {pensionAsAt}.</li>
+			<li>Estimated using <strong>both means tests — the assets test and the income test — paying the lower</strong>, as Centrelink does. Rates as at {pensionAsAt}.</li>
+			<li>The income test counts <strong>deemed</strong> income on your financial assets (an assumed return set by the government, not your actual one) plus any income you earn, such as wages or rent. So working or renting-out in retirement <strong>does</strong> reduce the estimate here.</li>
 			<li>Assumes you own your home — your home is exempt from the assets test and is not counted.</li>
-			<li>The income test, deeming, and non-homeowner rules are not modelled and could change the result.</li>
-			<li>Because the income test isn't modelled, <strong>earning wages in retirement won't reduce the pension estimate here</strong> — but in reality it can, so the tool may be optimistic if you keep working while on a part pension.</li>
+			<li>The <strong>Work Bonus</strong> (which exempts the first ~$300/fortnight of employment income) and non-homeowner rules are not modelled — so for a working retiree the estimate is <strong>conservative</strong> (it never overstates the pension).</li>
 			<li>Confirm your position with <a href="https://www.servicesaustralia.gov.au/age-pension" target="_blank" rel="noopener">Services Australia</a>.</li>
 		</ul>
 
 		<H2 text="Super contributions (before retirement)" />
 		<ul>
 			<li>If you are still working, super contributions are the employer SG (a percentage of salary) plus any salary sacrifice (a dollar amount), each taxed 15% going in.</li>
+			<li>The <strong>take-home pay</strong> shown under your salary applies PAYG tax on the {taxYear} resident scale — marginal rates, the Low Income Tax Offset and the 2% Medicare levy — but <em>not</em> the Seniors and Pensioners Tax Offset, which working-age earners can't claim. It's a guide only: salary sacrifice, HELP/HECS repayments and the Medicare Levy Surcharge are not deducted from it.</li>
 			<li>Salary sacrifice is capped at the $30,000 concessional limit, which <em>includes</em> the SG — so the most that can be sacrificed is $30,000 minus the SG. Amounts above the cap are ignored (in reality they'd be taxed at your marginal rate).</li>
 			<li>Super fund earnings during the working (accumulation) years are taxed at 15%.</li>
 			<li>After-tax (non-concessional) contributions and the downsizer contribution are not modelled.</li>

@@ -190,6 +190,12 @@
 									/>
 								</div>
 								<MoneyInput id="salary" bind:value={plan.salary} />
+								{#if plan.salary > 0}
+									<p class="field-note note-sm">
+										Note: after PAYG tax approximately {money(plan.salaryTax)}, you have about
+										<strong>{money(plan.salaryTakeHome)}/yr</strong> to spend.
+									</p>
+								{/if}
 							</div>
 							<div class="field">
 								<div class="field-head">
@@ -207,6 +213,13 @@
 									value={pct(plan.sgRate)}
 									oninput={(e) => (plan.sgRate = (Number(e.currentTarget.value) || 0) / 100)}
 								/>
+								{#if plan.sgContribution > 0}
+									<p class="field-note note-sm">
+										Note: {pct(plan.sgRate)}% of {money(plan.salary)} = <strong
+											>{money(plan.sgContribution)}/yr</strong
+										>; {money(plan.sgIntoSuper)} lands in super after the 15% contributions tax.
+									</p>
+								{/if}
 							</div>
 							<div class="field">
 								<div class="field-head">
@@ -220,6 +233,15 @@
 									/>
 								</div>
 								<MoneyInput id="sacrifice" bind:value={plan.salarySacrifice} />
+									{#if plan.salarySurplus > 0}
+										<p class="field-note note-sm">
+											Note: your take-home less spending ({money(plan.salaryTakeHome)} − {money(
+												plan.spend
+											)}) is about <strong>{money(plan.salarySurplus)}/yr</strong>{#if plan.sacrificeRoomLeft > 0} — of that
+												<strong>{money(plan.sacrificeRoomLeft)}</strong> could be added as salary sacrifice,
+												taking your before-tax super contributions to the $30,000 yearly cap{/if}.
+										</p>
+									{/if}
 							</div>
 							{#if plan.sacrificeOverCap}
 								<p class="warn-note">
