@@ -1260,36 +1260,22 @@ h2 {
 }
 .bank-acct-top {
 	display: flex;
+	align-items: flex-end;
 	gap: 8px;
 	margin-bottom: 10px;
 }
 .bank-name {
 	flex: 1;
 	min-width: 0;
-	padding: 9px 11px;
+	padding: 11px 12px;
 	border: 1px solid var(--line);
 	border-radius: 8px;
-	font-size: 14px;
+	font-size: 15px;
 	font-family: inherit;
 }
 .bank-name:focus {
 	outline: none;
 	border-color: var(--navy);
-}
-.bank-remove {
-	width: 36px;
-	margin: 0;
-	border: 1px solid var(--line);
-	background: #fff;
-	border-radius: 8px;
-	color: var(--muted);
-	font-size: 18px;
-	line-height: 1;
-	cursor: pointer;
-}
-.bank-remove:hover {
-	color: #b42318;
-	border-color: #f0c4bd;
 }
 .bank-fields {
 	display: grid;
@@ -1381,12 +1367,6 @@ h2 {
 	font-size: 12px;
 	font-variant-numeric: tabular-nums;
 	color: var(--ink);
-}
-.spend-row .bank-remove {
-	width: 22px;
-	height: 28px;
-	padding: 0;
-	font-size: 16px;
 }
 .spend-total {
 	display: flex;

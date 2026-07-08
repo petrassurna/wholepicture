@@ -3,6 +3,7 @@
 	import Calculations from '$lib/components/Calculations.svelte';
 	import Help from '$lib/components/Help.svelte';
 	import MoneyInput from '$lib/components/MoneyInput.svelte';
+	import RemoveButton from '$lib/components/RemoveButton.svelte';
 	import H1 from '$lib/components/H1.svelte';
 	import { plan, FREQ, FREQ_OPTIONS } from '$lib/state/plan.svelte';
 	import { CURRENT_PENSION } from '$lib/domain/pension';
@@ -269,12 +270,11 @@
 											{/each}
 										</select>
 										<span class="spend-line">{money(item.amount * FREQ[item.freq])}</span>
-										<button
-											type="button"
-											class="bank-remove"
-											aria-label="Remove item"
-											onclick={() => plan.removeSpendItem(i)}>×</button
-										>
+										<RemoveButton
+											small
+											label="Remove item"
+											onclick={() => plan.removeSpendItem(i)}
+										/>
 									</div>
 								{/each}
 								<div class="spend-total">
@@ -317,12 +317,7 @@
 										placeholder="Account name (e.g. term deposit)"
 										bind:value={account.name}
 									/>
-									<button
-										type="button"
-										class="bank-remove"
-										aria-label="Remove account"
-										onclick={() => plan.removeBankAccount(i)}>×</button
-									>
+									<RemoveButton label="Remove account" onclick={() => plan.removeBankAccount(i)} />
 								</div>
 								<div class="bank-fields">
 									<div class="field">
@@ -379,12 +374,7 @@
 										<label for={`inc-amt-${i}`}>Amount ($/yr){couple ? ', combined' : ''}</label>
 										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
 									</div>
-									<button
-										type="button"
-										class="bank-remove"
-										aria-label="Remove income"
-										onclick={() => plan.removeIncome(i)}>×</button
-									>
+									<RemoveButton label="Remove income" onclick={() => plan.removeIncome(i)} />
 								</div>
 								<div class="income-body">
 									<div class="bank-fields">
