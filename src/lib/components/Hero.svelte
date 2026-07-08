@@ -20,7 +20,7 @@
 				downturn at the wrong time could unfold.
 			</p>
 			<div class="cta">
-				<a class="btn btn-primary" href="/model">Start modelling</a>
+				<a class="btn btn-primary" href="/model">Try it</a>
 				<a class="btn btn-outline" href="/#how">See how it works</a>
 			</div>
 			<ul class="trust">

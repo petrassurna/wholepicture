@@ -20,6 +20,8 @@
 
 	const pct = (r: number) => Math.round(r * 1000) / 10; // 0.07 -> 7
 	const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU');
+	// For a couple, dollar amounts are the combined total for both partners.
+	const couple = $derived(plan.household === 'couple');
 </script>
 
 <svelte:head>
@@ -79,6 +81,12 @@
 								<option value="couple">Couple</option>
 							</select>
 						</div>
+						{#if couple}
+							<p class="field-note">
+								Enter <strong>combined</strong> totals for both partners — super, savings, income and
+								spending — not just one person's.
+							</p>
+						{/if}
 						<div class="field">
 							<div class="field-head">
 								<label for="agenow">Age now</label>
@@ -115,12 +123,15 @@
 						</label>
 						{#if plan.includePension}
 							<p class="warn-note">
-								⚠ <strong>Age Pension is a rough estimate only.</strong> It uses published rates as at
-								{CURRENT_PENSION.asAt}, which change several times a year, and it models the assets test
-								only (not the income test or your full circumstances). Do not rely on it — confirm your
-								actual entitlement with
-								<a href="https://www.servicesaustralia.gov.au/age-pension" target="_blank" rel="noopener"
-									>Services Australia</a
+								⚠ <strong>Age Pension is a rough estimate only.</strong> It uses published rates as
+								at
+								{CURRENT_PENSION.asAt}, which change several times a year, and it models the assets
+								test only (not the income test or your full circumstances). Do not rely on it —
+								confirm your actual entitlement with
+								<a
+									href="https://www.servicesaustralia.gov.au/age-pension"
+									target="_blank"
+									rel="noopener">Services Australia</a
 								> or a licensed adviser.
 							</p>
 						{/if}
@@ -138,7 +149,9 @@
 					<div class="acc-body">
 						<div class="field">
 							<div class="field-head">
-								<label for="super">Super balance ($)</label>
+								<label for="super"
+									>{couple ? 'Combined super balance ($)' : 'Super balance ($)'}</label
+								>
 								<Help
 									text="Your superannuation balance today — the main pot most people draw on in retirement. Cash savings (which earn a different rate) can be added separately later."
 								/>
@@ -179,7 +192,9 @@
 						{#if plan.spendItems.length === 0}
 							<div class="field">
 								<div class="field-head">
-									<label for="spend">Spend per year ($)</label>
+									<label for="spend"
+										>{couple ? 'Combined spend per year ($)' : 'Spend per year ($)'}</label
+									>
 									<Help
 										text="What you spend each year in retirement, in today's dollars. Default $50k is roughly the ASFA 'comfortable' budget for a single person (a couple is ~$73k). Or break it into line items below for a realistic figure."
 									/>
@@ -275,7 +290,7 @@
 								</div>
 								<div class="bank-fields">
 									<div class="field">
-										<label for={`bank-amt-${i}`}>Amount ($)</label>
+										<label for={`bank-amt-${i}`}>Amount ($){couple ? ', combined' : ''}</label>
 										<MoneyInput id={`bank-amt-${i}`} bind:value={account.amount} />
 									</div>
 									<div class="field">
@@ -292,12 +307,12 @@
 							</div>
 						{/each}
 						<button
-								type="button"
-								class="add-btn"
-								onclick={() => {
-									plan.addBankAccount();
-									trackEvent('added_bank');
-								}}>+ Add account</button
+							type="button"
+							class="add-btn"
+							onclick={() => {
+								plan.addBankAccount();
+								trackEvent('added_bank');
+							}}>+ Add account</button
 						>
 					</div>
 				{/if}
@@ -326,7 +341,9 @@
 								<div class="bank-acct-top">
 									<div class="field" style="flex: 1">
 										<label for={`inc-amt-${i}`}
-											>{inc.toSuper ? 'Salary ($/yr)' : 'Amount ($/yr)'}</label
+											>{inc.toSuper ? 'Salary ($/yr)' : 'Amount ($/yr)'}{couple
+												? ', combined'
+												: ''}</label
 										>
 										<MoneyInput id={`inc-amt-${i}`} bind:value={inc.amount} />
 									</div>
