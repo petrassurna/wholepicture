@@ -121,7 +121,8 @@ class Plan {
 
 	// Superannuation
 	superBalance = $state(DEFAULTS.single.superBalance);
-	superReturn = $state(0.07); // nominal p.a.
+	superReturn = $state(0.08); // nominal p.a., before fees and before the 15% earnings tax
+	superFees = $state(0.0085); // total yearly fees (admin + %) — subtracted from the return
 	// Contributions while still working (accumulation). Only used if currentAge < retireAge.
 	// sgRate = employer Super Guarantee rate on salary; salarySacrifice = extra before-tax
 	// dollars. Both are concessional (taxed 15% going in).
@@ -140,7 +141,7 @@ class Plan {
 	spendItems = $state<SpendItem[]>(defaultSpendItems('single'));
 
 	// Market assumptions
-	inflation = $state(0.025);
+	inflation = $state(0.03);
 	downturn = $state(0.3);
 	recoveryYears = $state(5);
 
@@ -153,9 +154,14 @@ class Plan {
 
 	// --- domain objects derived from the raw inputs ---
 
+	/** Super's return after fees — the growth actually applied to the balance. */
+	get superNetReturn(): number {
+		return this.superReturn - this.superFees;
+	}
+
 	get assets(): Asset[] {
 		return [
-			new Super(this.superBalance, this.superReturn),
+			new Super(this.superBalance, this.superNetReturn),
 			...this.bankAccounts.map(
 				(a) => new BankAccount(a.name || 'Bank/investment account', a.amount, a.rate)
 			)
@@ -385,6 +391,7 @@ class Plan {
 				if (typeof d.planToAge === 'number') this.planToAge = d.planToAge;
 				if (typeof d.superBalance === 'number') this.superBalance = d.superBalance;
 				if (typeof d.superReturn === 'number') this.superReturn = d.superReturn;
+				if (typeof d.superFees === 'number') this.superFees = d.superFees;
 				if (typeof d.salary === 'number') this.salary = d.salary;
 				// `superContribRate` is the legacy key (was the blended SG+sacrifice %).
 				if (typeof d.sgRate === 'number') this.sgRate = d.sgRate;
@@ -464,6 +471,7 @@ class Plan {
 			planToAge: this.planToAge,
 			superBalance: this.superBalance,
 			superReturn: this.superReturn,
+			superFees: this.superFees,
 			salary: this.salary,
 			sgRate: this.sgRate,
 			salarySacrifice: this.salarySacrifice,
@@ -493,14 +501,15 @@ class Plan {
 		this.currentAge = 67;
 		this.retireAge = 67;
 		this.planToAge = 90;
-		this.superReturn = 0.07;
+		this.superReturn = 0.08;
+		this.superFees = 0.0085;
 		this.salary = 0;
 		this.sgRate = 0.12;
 		this.salarySacrifice = 0;
 		this.bankAccounts = [];
 		this.incomeSources = [];
 		this.spendItems = defaultSpendItems('single');
-		this.inflation = 0.025;
+		this.inflation = 0.03;
 		this.downturn = 0.3;
 		this.recoveryYears = 5;
 		this.includePension = true;

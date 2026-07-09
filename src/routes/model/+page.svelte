@@ -47,7 +47,7 @@
 				<ProjectionChart />
 				<p class="chart-note">
 					In today's dollars <Help
-						text="Every figure is shown in today's money — what it's worth to you now, not an inflated future amount. Spending stays flat because it's already in today's dollars, and returns are shown after inflation: 7% growth with 2.5% inflation appears as about 4.4%. So a $52,200 budget buys the same lifestyle each year even as prices rise."
+						text="Every figure is shown in today's money — what it's worth to you now, not an inflated future amount. Spending stays flat because it's already in today's dollars, and returns are shown after inflation: 8% growth with 3% inflation appears as about 4.9%. So a $52,200 budget buys the same lifestyle each year even as prices rise."
 					/> · illustrative only; actual returns, tax and future spending will differ.
 					<a href="/assumptions">Assumptions</a>.
 				</p>
@@ -165,7 +165,7 @@
 							<div class="field-head">
 								<label for="ret">Super return (% p.a.)</label>
 								<Help
-									text="The long-run average return on your super, before inflation. Default 7% is a typical long-term figure for a growth/balanced option; conservative options earn less, so lower it if your super is in a defensive setting."
+									text="The long-run average return on your super, before inflation, before fees (enter fees separately below), and before the 15% earnings tax the model applies while you're working. Default 8% reconciles with Moneysmart's Balanced option: 8% − 0.85% fees, then −15% tax, gives ~6.1% net — the same figure Moneysmart quotes. For a more defensive option, lower it."
 								/>
 							</div>
 							<input
@@ -175,6 +175,28 @@
 								value={pct(plan.superReturn)}
 								oninput={(e) => (plan.superReturn = (Number(e.currentTarget.value) || 0) / 100)}
 							/>
+						</div>
+						<div class="field">
+							<div class="field-head">
+								<label for="fees">Super fees (% p.a.)</label>
+								<Help
+									text="Total yearly super fees — administration plus investment/percentage fees — as a share of your balance. Around 0.85% is typical all-in; low-cost options can be ~0.5%, older retail funds more. Subtracted from your return, so the growth actually applied is return minus fees. (Moneysmart-style calculators take fees as a separate input; this matches that, so enter your return before fees above.)"
+								/>
+							</div>
+							<input
+								id="fees"
+								type="number"
+								step="0.05"
+								min="0"
+								max="100"
+								value={pct(plan.superFees)}
+								oninput={(e) => (plan.superFees = (Number(e.currentTarget.value) || 0) / 100)}
+							/>
+							<p class="field-note note-sm">
+								Growth applied: <strong>{pct(plan.superNetReturn)}%</strong> before inflation ({pct(
+									plan.superReturn
+								)}% return − {pct(plan.superFees)}% fees).
+							</p>
 						</div>
 
 						{#if plan.currentAge < plan.retireAge}
@@ -496,7 +518,7 @@
 							<div class="field-head">
 								<label for="inf">Inflation (% p.a.)</label>
 								<Help
-									text="How much prices rise each year. Default 2.5% sits in the middle of the Reserve Bank's 2–3% target band. The chart is shown in today's dollars (your return minus inflation)."
+									text="How much prices rise each year. Default 3% is the top of the Reserve Bank's 2–3% target band — chosen over the 2.5% midpoint because retiree costs (health, aged care, rates) tend to outrun headline CPI, so a lower figure would flatter the plan. The chart is shown in today's dollars (your return minus inflation)."
 								/>
 							</div>
 							<input

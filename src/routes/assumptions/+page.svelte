@@ -34,8 +34,8 @@
 		</p>
 		<ul>
 			<li>
-				Investment returns are applied after inflation. A 7% return with 2.5% inflation shows as
-				about 4.4% real growth.
+				Investment returns are applied after inflation. An 8% return with 3% inflation shows as
+				about 4.9% real growth.
 			</li>
 			<li>
 				Spending is held flat in real terms: it keeps the same lifestyle each year, which means it
@@ -173,11 +173,13 @@
 
 		<H2 text="Investment returns and the bad case" />
 		<ul>
-			<li>A single long-run average return that you set, the same each year.</li>
+			<li>A single long-run average return that you set, the same each year — entered before fees.</li>
 			<li>
-				<strong>Enter your return net of fees.</strong> There is no separate fees input, so your return
-				should already have super and investment fees (typically ~0.5–1.5% a year) taken out — otherwise
-				the projection will be too optimistic.
+				<strong>Super fees are a separate input</strong> (default 0.85% a year, covering admin plus
+				investment fees) and are subtracted from your super return, matching how Moneysmart treats
+				fees. The default 8% return less 0.85% fees, then the 15% earnings tax while you are working,
+				gives about 6.1% — the same net figure Moneysmart quotes for a balanced option. (Bank and
+				investment accounts have no separate fees field, so enter their return net of fees.)
 			</li>
 			<li>
 				The bad case applies a one-off market downturn right at retirement, then a recovery over a
