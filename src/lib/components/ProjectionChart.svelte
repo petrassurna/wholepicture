@@ -302,7 +302,7 @@
 
 		<circle cx="48" cy="12.5" r="3.2" fill="#2e7d5b" />
 		<text x="57" y="16" font-size="13" font-weight="600" fill="#2e7d5b"
-			>Set aside (not re-spent)</text
+			>Spare cash you didn't plan to have</text
 		>
 
 		<polyline
@@ -345,10 +345,10 @@
 		</g>
 	</svg>
 	<p class="chart-note">
-		Money the ATO minimum drawdown forces out of super beyond your spending — about {compact(
-			totalSetAside
-		)} by age {plan.planToAge}. It's set aside as cash (no growth) and isn't spent in the
-		projection, so your invested balance runs down as if it weren't there.
+		Money you didn't plan on: once retired, the ATO makes super pay out a minimum each year — and
+		here that's more than you're spending, so about {compact(totalSetAside)} builds up as cash by age
+		{plan.planToAge}. It's not extra wealth (it's your own super, out early), but it's real,
+		spendable money still in your pocket — so you're better off than the balance line alone suggests.
 	</p>
 {:else}
 	<div class="chart-legend">
