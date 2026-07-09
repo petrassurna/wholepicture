@@ -461,4 +461,11 @@
 			{/each}
 		</g>
 	</svg>
+	{#if showSetAsideTab && (avgOut || badOut)}
+		<p class="chart-note">
+			The run-out age ignores your set-aside cash (about {compact(totalSetAside)} by age {plan.planToAge}) —
+			money the minimum drawdown forces out of super that the model doesn't re-spend. That cash would
+			really fund more years, so your money likely lasts longer than shown.
+		</p>
+	{/if}
 {/if}
