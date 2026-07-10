@@ -345,10 +345,9 @@
 		</g>
 	</svg>
 	<p class="chart-note">
-		Money you didn't plan on: once retired, the ATO makes super pay out a minimum each year — and
-		here that's more than you're spending, so about {compact(totalSetAside)} builds up as cash by age
-		{plan.planToAge}. It's not extra wealth (it's your own super, out early), but it's real,
-		spendable money still in your pocket — so you're better off than the balance line alone suggests.
+		The ATO minimum pays out more than you spend, so about {compact(totalSetAside)} builds up as cash
+		by age {plan.planToAge} — your own super, just out early. Real, spendable money, so you're better
+		off than the balance line suggests.
 	</p>
 {:else}
 	<div class="chart-legend">
