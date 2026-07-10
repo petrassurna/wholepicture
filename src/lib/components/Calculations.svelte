@@ -130,6 +130,7 @@
 		setAsideTotal: number; // running set-aside bucket at this age
 		minDrawEq: string; // '' unless the minimum drawdown forced something aside
 		afterCashflow: number;
+		drawn: number; // total withdrawn from all accounts this year (drawdown only; 0 while working)
 		cashflowEq: string;
 		closing: number;
 		graphNext: number | null;
@@ -214,6 +215,7 @@
 				setAsideTotal: pt.setAside,
 				minDrawEq: '',
 				afterCashflow,
+				drawn: 0,
 				cashflowEq,
 				closing,
 				graphNext,
@@ -319,6 +321,7 @@
 			}
 		}
 		const afterCashflow = openings.reduce((s, o, i) => s + (o - draws[i]), 0);
+		const drawn = draws.reduce((s, d) => s + d, 0); // total pulled from the pot this year
 		const surplus = rawNet < 0;
 
 		const minDrawEq =
@@ -402,6 +405,7 @@
 			setAsideTotal,
 			minDrawEq,
 			afterCashflow,
+			drawn,
 			cashflowEq,
 			closing,
 			graphNext,
@@ -422,6 +426,12 @@
 	const checkable = $derived(rows.filter((r) => r.graphNext !== null));
 	const reconciled = $derived(checkable.filter((r) => r.matches).length);
 	const allOk = $derived(checkable.length > 0 && reconciled === checkable.length);
+
+	// Only show the money-in columns a plan actually uses, so the default case
+	// (super + pension, no other income or tax) stays uncluttered.
+	const anyTax = $derived(rows.some((r) => r.tax > 0.5));
+	const anyIncome = $derived(rows.some((r) => r.income > 0.5));
+	const anyPension = $derived(rows.some((r) => r.pension > 0.5));
 </script>
 
 <div class="calc-box">
@@ -631,6 +641,11 @@
 							<tr>
 								<th>Age</th>
 								<th>Opening</th>
+								<th>Spend</th>
+								{#if anyTax}<th>Tax</th>{/if}
+								{#if anyIncome}<th>Income</th>{/if}
+								{#if anyPension}<th>Pension</th>{/if}
+								<th>Drawn</th>
 								<th>Growth</th>
 								<th>Closing (calc)</th>
 								<th>Graph</th>
@@ -642,6 +657,14 @@
 								<tr>
 									<td>{r.A}</td>
 									<td>{money(r.opening)}</td>
+									<td>{r.phase === 'drawdown' ? money(r.spend) : '—'}</td>
+									{#if anyTax}<td>{r.phase === 'drawdown' && r.tax > 0.5 ? money(r.tax) : '—'}</td>{/if}
+									{#if anyIncome}<td>{r.phase === 'drawdown' && r.income > 0.5 ? money(r.income) : '—'}</td
+										>{/if}
+									{#if anyPension}<td
+											>{r.phase === 'drawdown' && r.pension > 0.5 ? money(r.pension) : '—'}</td
+										>{/if}
+									<td>{r.phase === 'drawdown' ? money(r.drawn) : '—'}</td>
 									<td>{pctStr(r.growth)}</td>
 									<td>{money(r.closing)}</td>
 									<td>{r.graphNext === null ? '—' : money(r.graphNext)}</td>
