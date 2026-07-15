@@ -73,6 +73,29 @@ describe('agePension — couple and non-homeowner (assets test binds, no other i
 	});
 });
 
+describe('agePension — assets-test anchors (no shape assumed between them)', () => {
+	// Three sampled points on the assets test — full at the bottom, one interior
+	// value, and the exact cut-off — so the taper's ENDS and MIDDLE are pinned
+	// without asserting the relationship between them is linear. No other income,
+	// homeowner, so the assets test is what binds at the interior and cut-off.
+	// Cut-off = free area + max / taper.
+	it('single: full at $0, an interior value, and $0 at the cut-off', () => {
+		expect(agePension(67, 0, 0, 'single')).toBeCloseTo(31_223, 6); // full
+		expect(agePension(67, 500_000, 0, 'single')).toBeCloseTo(18_197, 6); // interior (assets test binds)
+		// Cut-off: 333,000 + 31,223 / 0.078 = 733,294.87 → a few cents just under, $0 at/above.
+		expect(agePension(67, 733_294, 0, 'single')).toBeLessThan(1);
+		expect(agePension(67, 733_295, 0, 'single')).toBe(0);
+	});
+
+	it('couple: full at $0, an interior value, and $0 at the cut-off', () => {
+		expect(agePension(67, 0, 0, 'couple')).toBeCloseTo(47_070, 6); // full
+		expect(agePension(67, 700_000, 0, 'couple')).toBeCloseTo(31_392, 6); // interior (assets test binds)
+		// Cut-off: 499,000 + 47,070 / 0.078 = 1,102,461.54 → a few cents just under, $0 at/above.
+		expect(agePension(67, 1_102_461, 0, 'couple')).toBeLessThan(1);
+		expect(agePension(67, 1_102_462, 0, 'couple')).toBe(0);
+	});
+});
+
 describe('agePension — invariants', () => {
 	it('is monotonic non-increasing in assets and clamped to [0, max]', () => {
 		// Both tests fall as assets rise (assets taper; deeming raises income), so the
