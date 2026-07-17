@@ -370,7 +370,7 @@
 						<p class="field-note">
 							Savings, term deposits and investments (e.g. an index fund), each at its own return.
 							<Help
-								text="Drawn on only once your super runs out, and left to grow until then. The whole return is taxed each year at your marginal rate — right for a cash account (all interest), and deliberately conservative for a growth investment like Vanguard (in reality only the distributions would be taxed each year, but taxing the lot keeps it simple and never flatters the result). Your super isn't taxed; capital gains tax on sale isn't modelled."
+								text="These fund whatever your super's minimum drawdown doesn't cover, so your super is left to compound tax-free — it only pays out more than its minimum once these accounts are empty. The whole return is taxed each year at your marginal rate — right for a cash account (all interest), and deliberately conservative for a growth investment like Vanguard (in reality only the distributions would be taxed each year, but taxing the lot keeps it simple and never flatters the result). Your super isn't taxed; capital gains tax on sale isn't modelled."
 							/>
 						</p>
 						{#each plan.bankAccounts as account, i (account)}

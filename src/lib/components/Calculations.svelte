@@ -292,41 +292,36 @@
 		}
 
 		// Cash the portfolio must fund, floored at zero (a plain income surplus isn't
-		// saved — conservative). Super pays at least its ATO minimum drawdown; anything
-		// that forces out beyond what's needed is set aside in a non-growing bucket.
-		// The draw comes from super first, other accounts only once super is exhausted —
-		// mirrors the engine, so in a normal year non-super accounts just grow.
+		// saved — conservative). Super must pay its ATO minimum drawdown, so that forced
+		// money funds the year first and whatever it pushes out beyond what's needed is
+		// set aside in a non-growing bucket. The rest of the need comes from the taxed
+		// accounts, and super only pays ABOVE its minimum once those are empty — mirrors
+		// the engine (see projection.ts), which is what makes the reconciliation a check.
 		const rawNet = plan.spend + tax - income - pension;
 		const need = Math.max(0, rawNet);
 		const superBal = openings[0];
-		const needFromSuper = Math.min(need, superBal);
 		const minRate = minDrawdownRate(A);
 		const minW = minRate * superBal;
-		const superWithdrawal = Math.min(superBal, Math.max(needFromSuper, minW));
-		const setAsideThisYear = superWithdrawal - needFromSuper;
+		const fromMin = Math.min(need, minW);
+		const setAsideThisYear = minW - fromMin;
 		const setAsideTotal = pt.setAside;
 
 		const draws = openings.map(() => 0);
-		draws[0] = superWithdrawal;
-		const remainder = need - needFromSuper;
-		if (remainder > 0) {
-			const others = openings.map((o, i) => (i === 0 ? 0 : o));
-			const otherTotal = others.reduce((s, b) => s + b, 0);
-			if (otherTotal > 0) {
-				openings.forEach((_, i) => {
-					if (i !== 0) draws[i] = remainder * (others[i] / otherTotal);
-				});
-			} else {
-				draws[0] += remainder;
-			}
-		}
+		const others = openings.map((o, i) => (i === 0 ? 0 : Math.max(0, o)));
+		const otherTotal = others.reduce((s, b) => s + b, 0);
+		const fromOthers = Math.min(need - fromMin, otherTotal);
+		if (fromOthers > 0)
+			openings.forEach((_, i) => {
+				if (i !== 0) draws[i] = fromOthers * (others[i] / otherTotal);
+			});
+		draws[0] = minW + Math.min(need - fromMin - fromOthers, superBal - minW);
 		const afterCashflow = openings.reduce((s, o, i) => s + (o - draws[i]), 0);
 		const drawn = draws.reduce((s, d) => s + d, 0); // total pulled from the pot this year
 		const surplus = rawNet < 0;
 
 		const minDrawEq =
 			setAsideThisYear > 0.5
-				? `${pctStr(minRate)} × ${num(superBal)} = ${num(minW)} minimum vs ${num(needFromSuper)} needed for spending → ${num(setAsideThisYear)} set aside (bucket now ${num(setAsideTotal)})`
+				? `${pctStr(minRate)} × ${num(superBal)} = ${num(minW)} minimum vs ${num(need)} needed for spending → ${num(setAsideThisYear)} set aside (bucket now ${num(setAsideTotal)})`
 				: '';
 
 		const uniformGrowth = assets.length === 1 || (scenario === 'bad' && t <= plan.recoveryYears);

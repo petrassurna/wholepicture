@@ -137,15 +137,18 @@
 
 		<H2 text="Drawing down your super" />
 		<p>
-			Your spending is funded from <strong>super first</strong> — any bank or investment accounts are
-			left to grow and are only drawn on once super is exhausted. By law you must also withdraw a minimum
-			from an account-based pension each year — around 5% of the balance at ages 65–74, rising with age
-			(up to 14% from 95). It's a floor, not a limit.
+			By law you must withdraw a minimum from an account-based pension each year — around 5% of the
+			balance at ages 65–74, rising with age (up to 14% from 95). It's a floor, not a limit. Because
+			that money has to come out anyway, the model spends it first. Anything you still need beyond it
+			is drawn from your <strong>bank and investment accounts</strong>, leaving the tax-free super
+			fund to keep compounding; super only pays out <strong>more</strong> than its minimum once those
+			accounts are empty.
 		</p>
 		<ul>
 			<li>
-				<strong>The tool enforces that minimum.</strong> Each year super pays out the greater of what
-				your budget needs and the required minimum.
+				<strong>The tool enforces that minimum.</strong> Each year super pays out at least the
+				required minimum, and that money is spent before anything else — it has to leave the fund
+				either way.
 			</li>
 			<li>
 				<strong>The minimum may be more than you spend</strong> — most often with a large balance

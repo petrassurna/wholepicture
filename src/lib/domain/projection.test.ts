@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { project, realReturn, type Assumptions } from './projection';
-import type { Asset } from './assets';
+import { Super, BankAccount, type Asset } from './assets';
 
 // All expected numbers below are derived independently of the engine —
 // by hand arithmetic, by counting, or from a stated requirement — so the
@@ -90,6 +90,48 @@ describe('project — average, with growth (arithmetic by hand)', () => {
 		expect(at(p, 61)).toBeCloseTo(99_000, 4);
 		expect(at(p, 62)).toBeCloseTo(97_900, 4);
 		expect(at(p, 63)).toBeCloseTo(96_690, 4);
+	});
+});
+
+describe('project — draw order: super pays its minimum, the taxed accounts pay the rest', () => {
+	// $200k super + $100k bank, both 0% real (nominal = inflation = 0, so the bank
+	// also earns no assessable interest → no tax). Spend $30k from age 65, where the
+	// ATO minimum is 5%. Each year super pays only 5% of ITS OWN balance and the bank
+	// covers the shortfall, so the tax-free fund is left to compound:
+	//   65: super 200,000 −5% = −10,000 → 190,000 | bank 100,000 − 20,000 → 80,000
+	//   66: super 190,000 −5% =  −9,500 → 180,500 | bank  80,000 − 20,500 → 59,500
+	//   67: super 180,500 −5% =  −9,025 → 171,475 | bank  59,500 − 20,975 → 38,525
+	const assets = () => [new Super(200_000, 0), new BankAccount('td', 100_000, 0)];
+	const plan = A({ startAge: 65, endAge: 90, spend: 30_000, inflation: 0 });
+	const balsAt = (p: ReturnType<typeof project>, age: number) =>
+		p.points.find((pt) => pt.age === age)!.balances;
+
+	it('takes only the minimum drawdown from super while the bank can fund the rest', () => {
+		const p = project(assets(), plan, 'average');
+		expect(balsAt(p, 66)[0]).toBeCloseTo(190_000, 4);
+		expect(balsAt(p, 66)[1]).toBeCloseTo(80_000, 4);
+		expect(balsAt(p, 67)[0]).toBeCloseTo(180_500, 4);
+		expect(balsAt(p, 67)[1]).toBeCloseTo(59_500, 4);
+		expect(balsAt(p, 68)[0]).toBeCloseTo(171_475, 4);
+		expect(balsAt(p, 68)[1]).toBeCloseTo(38_525, 4);
+	});
+
+	it('pays above the minimum from super only once the bank is empty', () => {
+		// 68: super 171,475 −5% = −8,573.75 → 162,901.25 | bank 38,525 − 21,426.25 → 17,098.75
+		// 69: the bank's 17,098.75 can't cover the $30k less super's 5% minimum
+		//     (8,145.06), so super pays 4,756.19 ABOVE its minimum to close the gap:
+		//     super 162,901.25 − 12,901.25 → 150,000 | bank → 0
+		const p = project(assets(), plan, 'average');
+		expect(balsAt(p, 69)[0]).toBeCloseTo(162_901.25, 4);
+		expect(balsAt(p, 69)[1]).toBeCloseTo(17_098.75, 4);
+		expect(balsAt(p, 70)[0]).toBeCloseTo(150_000, 4);
+		expect(balsAt(p, 70)[1]).toBe(0); // exactly empty — no floating-point crumb
+	});
+
+	it('never leaves the portfolio short — the full yearly spend always comes out', () => {
+		// Whatever the split, $300k − 5 × $30k = $150k must remain at 70.
+		const p = project(assets(), plan, 'average');
+		expect(at(p, 70)).toBeCloseTo(150_000, 4);
 	});
 });
 

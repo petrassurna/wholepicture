@@ -12,7 +12,8 @@ import { minDrawdownRate } from './drawdown';
 //   2. Monotonicity — more spend never lasts longer, more balance never lasts
 //      shorter, the bad case never beats the average, tax never extends longevity.
 //   3. An INDEPENDENTLY written simulator (no-tax path) checked point-by-point,
-//      validating growth, super-first drawdown, and the crash/recovery mechanics.
+//      validating growth, the minimum-drawdown-then-others draw order, and the
+//      crash/recovery mechanics.
 
 function rng(seed: number) {
 	return () => {
@@ -63,24 +64,24 @@ function simulate(assets: Asset[], a: Assumptions, scenario: Scenario) {
 			runsOutAge ??= age;
 			continue;
 		}
-		// withdraw `spend` from super first; super pays at least the ATO minimum
-		// drawdown (the forced excess just leaves super), then overflow to the rest
+		// Super pays at least the ATO minimum drawdown and that forced money funds
+		// `spend` first (any excess just leaves super); the rest of the spend comes
+		// from the other accounts; super only pays above its minimum once they're empty.
 		const superIdx = Math.max(
 			0,
 			assets.findIndex((x) => !isTaxable(x))
 		);
 		const superBal = Math.max(0, bal[superIdx]);
-		const needFromSuper = Math.min(a.spend, superBal);
 		const minW = minDrawdownRate(age) * superBal;
-		const superW = Math.min(superBal, Math.max(needFromSuper, minW));
+		const others = bal.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
+		const tot = others.reduce((s, b) => s + b, 0);
+		const unmet = Math.max(0, a.spend - minW); // spend the minimum can't cover
+		const fromOthers = Math.min(unmet, tot);
+		const superW = minW + Math.min(unmet - fromOthers, superBal - minW);
 		bal[superIdx] -= superW;
-		const remainder = a.spend - needFromSuper;
-		if (remainder > 0) {
-			const others = bal.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
-			const tot = others.reduce((s, b) => s + b, 0);
-			if (tot <= 0) bal[superIdx] -= remainder;
-			else for (let i = 0; i < bal.length; i++) bal[i] -= remainder * (others[i] / tot);
-		}
+		if (fromOthers > 0) for (let i = 0; i < bal.length; i++) bal[i] -= fromOthers * (others[i] / tot);
+		// A drained account rounds to ~1e-13, not 0; treat a millionth of a cent as empty.
+		for (let i = 0; i < bal.length; i++) if (Math.abs(bal[i]) < 1e-6) bal[i] = 0;
 		if (bal.reduce((s, b) => s + b, 0) <= 0) {
 			bal.fill(0);
 			runsOutAge ??= age;

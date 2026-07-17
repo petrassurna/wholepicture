@@ -1,11 +1,12 @@
 // Pure projection engine — no UI, no framework, deterministic.
 // It evolves a PORTFOLIO of assets year by year: each asset grows at its own
-// return, spending is drawn from super first (other accounts only once super is
-// gone), super pays at least the ATO minimum drawdown with any forced excess set
-// aside in a non-growing bucket, taxable assets report their assessable income
-// (see assets.ts / ITaxable), and tax on the year's assessable income is an
-// explicit outflow (see household.ts). Assets are immutable definitions; the
-// engine owns the mutable balances.
+// return, super pays at least the ATO minimum drawdown and that forced money funds
+// the year first (any excess beyond what's needed is set aside in a non-growing
+// bucket), the rest of the year's need comes from the taxed accounts, and super
+// only pays ABOVE its minimum once those are empty. Taxable assets report their
+// assessable income (see assets.ts / ITaxable), and tax on the year's assessable
+// income is an explicit outflow (see household.ts). Assets are immutable
+// definitions; the engine owns the mutable balances.
 //
 // Tax convention: assessable investment income is NOMINAL interest (balance ×
 // nominal return), while balances grow at their REAL return (today's dollars).
@@ -63,21 +64,25 @@ export function realReturn(nominal: number, inflation: number): number {
 	return (1 + nominal) / (1 + inflation) - 1;
 }
 
+/** Positive balances held OUTSIDE super, by slot. `superIdx` is super's slot. */
+function othersPositive(bals: number[], superIdx: number): number[] {
+	return bals.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
+}
+
+/** What the non-super accounts can fund this year. */
+function othersTotal(bals: number[], superIdx: number): number {
+	return othersPositive(bals, superIdx).reduce((s, b) => s + b, 0);
+}
+
 /**
  * Spread `net` (>= 0) across the NON-super accounts pro-rata by their positive
- * share — used only once super itself can't cover the year's need (a last resort,
- * so in a normal year these accounts are left to just grow). Parks any residual on
- * super if there's nothing else, which tips the plan into "runs out". `superIdx` is
- * super's slot.
+ * share. The caller keeps `net` within `othersTotal`, so this never overdraws.
  */
 function drawFromOthers(bals: number[], net: number, superIdx: number): void {
 	if (net <= 0) return;
-	const others = bals.map((b, i) => (i === superIdx ? 0 : Math.max(0, b)));
+	const others = othersPositive(bals, superIdx);
 	const total = others.reduce((s, b) => s + b, 0);
-	if (total <= 0) {
-		bals[superIdx] -= net; // nothing left anywhere; park it on super (→ runs out)
-		return;
-	}
+	if (total <= 0) return;
 	for (let i = 0; i < bals.length; i++) bals[i] -= net * (others[i] / total);
 }
 
@@ -153,14 +158,18 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 			// (income + pension cover spending + tax) nothing is needed and a plain
 			// income surplus isn't saved — deliberately conservative.
 			const need = Math.max(0, a.spend + tax - inc.gross - pension);
-			// Super must pay at least the ATO minimum drawdown for the age. Whatever that
-			// forces out beyond what's needed to spend is set aside (not re-spent).
+			// Super must pay at least the ATO minimum drawdown for the age. That money is
+			// leaving the fund whether it's wanted or not, so it funds the year first;
+			// whatever it forces out beyond what's needed to spend is set aside.
 			const superBal = Math.max(0, bals[superIdx]);
-			const needFromSuper = Math.min(need, superBal);
 			const minWithdrawal = minDrawdownRate(age) * superBal;
-			superWithdrawal = Math.min(superBal, Math.max(needFromSuper, minWithdrawal));
-			setAside += superWithdrawal - needFromSuper;
-			fromOthers = need - needFromSuper; // super couldn't cover it all → rest from the others
+			const fromMin = Math.min(need, minWithdrawal);
+			setAside += minWithdrawal - fromMin;
+			// The rest of the need comes from the taxed accounts, leaving the tax-free fund
+			// to compound. Only once they're empty does super pay above its minimum.
+			fromOthers = Math.min(need - fromMin, othersTotal(bals, superIdx));
+			const aboveMin = Math.min(need - fromMin - fromOthers, superBal - minWithdrawal);
+			superWithdrawal = minWithdrawal + aboveMin;
 		}
 
 		points.push({
@@ -180,6 +189,10 @@ export function project(assets: Asset[], a: Assumptions, scenario: Scenario): Pr
 
 		bals[superIdx] -= superWithdrawal;
 		drawFromOthers(bals, fromOthers, superIdx);
+		// Draining an account lands on ~1e-13 rather than 0 (the pro-rata split and the
+		// min+above-min split both round), and a crumb reads as "still solvent" below,
+		// delaying run-out by a year. Snap it: a millionth of a cent is empty.
+		for (let i = 0; i < bals.length; i++) if (Math.abs(bals[i]) < 1e-6) bals[i] = 0;
 
 		if (bals.reduce((s, b) => s + b, 0) <= 0) {
 			bals.fill(0);
